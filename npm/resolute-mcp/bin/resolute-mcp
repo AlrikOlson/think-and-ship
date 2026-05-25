@@ -1,0 +1,5 @@
+#!/bin/sh
+# Stub launcher — replaced by the real binary during postinstall.
+# If this runs, the binary wasn't installed.
+echo "resolute-mcp: binary not installed. Run 'npm rebuild resolute-mcp' or install Rust and run 'cargo install --path crates/resolute-mcp'" >&2
+exit 1

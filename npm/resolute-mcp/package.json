@@ -1,0 +1,29 @@
+{
+  "name": "resolute-mcp",
+  "version": "0.1.0",
+  "description": "Structured execution tracking for autonomous AI development — the 'doing' half of think-and-ship",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AlrikOlson/think-and-ship"
+  },
+  "bin": {
+    "resolute-mcp": "bin/resolute-mcp"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "files": [
+    "bin/",
+    "install.js",
+    "README.md"
+  ],
+  "keywords": [
+    "mcp",
+    "sdlc",
+    "ai",
+    "agent",
+    "execution",
+    "tracking"
+  ]
+}

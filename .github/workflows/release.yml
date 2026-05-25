@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build deliberate-mcp
+        run: cargo build --release --target ${{ matrix.target }} -p deliberate-mcp
+
+      - name: Build resolute-mcp
+        run: cargo build --release --target ${{ matrix.target }} -p resolute-mcp
+
+      - name: Package deliberate-mcp
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../deliberate-mcp-${{ github.ref_name }}-${{ matrix.target }}.tar.gz deliberate-mcp
+
+      - name: Package resolute-mcp
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../resolute-mcp-${{ github.ref_name }}-${{ matrix.target }}.tar.gz resolute-mcp
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.target }}
+          path: |
+            deliberate-mcp-*.tar.gz
+            resolute-mcp-*.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            deliberate-mcp-*.tar.gz
+            resolute-mcp-*.tar.gz
+          generate_release_notes: true
