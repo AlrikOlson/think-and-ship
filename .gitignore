@@ -1,0 +1,6 @@
+/target
+*.tmp
+.DS_Store
+node_modules/
+crates/deliberate-mcp/app/src-tauri/target/
+crates/deliberate-mcp/app/src-tauri/gen/schemas/

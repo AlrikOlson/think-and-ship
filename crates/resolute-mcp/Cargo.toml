@@ -1,0 +1,30 @@
+[package]
+name = "resolute-mcp"
+version = "0.1.0"
+description = "Structured execution tracking for autonomous AI development — the 'doing' half of think-and-ship"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "resolute_mcp"
+path = "src/lib.rs"
+
+[[bin]]
+name = "resolute-mcp"
+path = "src/main.rs"
+
+[dependencies]
+think-and-ship-core = { path = "../think-and-ship-core" }
+rmcp = { version = "1.7", features = ["server", "transport-io", "macros", "schemars"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+schemars = "1"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "io-util", "signal", "net", "sync", "time"] }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[dev-dependencies]
+pretty_assertions = "1"
+tempfile = "3"
