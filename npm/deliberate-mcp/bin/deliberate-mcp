@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "deliberate-mcp: binary not installed. Run 'npm rebuild deliberate-mcp' or install Rust and run 'cargo install --path crates/deliberate-mcp'" >&2
+exit 1

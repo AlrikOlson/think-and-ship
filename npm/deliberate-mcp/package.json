@@ -1,0 +1,29 @@
+{
+  "name": "deliberate-mcp",
+  "version": "0.3.0",
+  "description": "Structured, branching, revisable reasoning traces over MCP — the 'thinking' half of think-and-ship",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AlrikOlson/think-and-ship"
+  },
+  "bin": {
+    "deliberate-mcp": "bin/deliberate-mcp"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "files": [
+    "bin/",
+    "install.js",
+    "README.md"
+  ],
+  "keywords": [
+    "mcp",
+    "reasoning",
+    "ai",
+    "agent",
+    "deliberation",
+    "traces"
+  ]
+}
