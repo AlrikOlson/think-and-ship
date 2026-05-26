@@ -2,7 +2,8 @@
 
 [![CI](https://github.com/AlrikOlson/think-and-ship/actions/workflows/ci.yml/badge.svg)](https://github.com/AlrikOlson/think-and-ship/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/think-and-ship)](https://www.npmjs.com/package/think-and-ship)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![crates.io](https://img.shields.io/crates/v/deliberate-mcp)](https://crates.io/crates/deliberate-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Two MCP servers for AI agents. One thinks, one ships.
 
@@ -55,12 +56,12 @@ think-and-ship status    # see what's configured
 ## Install (alternative methods)
 
 ```sh
-# npm (recommended — installs prebuilt binaries)
+# npm (recommended — downloads prebuilt binaries, no Rust needed)
 npm install -g think-and-ship
 
-# From source (requires Rust)
-cargo install --path crates/deliberate-mcp
-cargo install --path crates/resolute-mcp
+# cargo (from crates.io)
+cargo install deliberate-mcp
+cargo install resolute-mcp
 
 # npx (run without installing)
 npx think-and-ship --check
@@ -228,6 +229,14 @@ cargo run -p resolute-mcp
 cargo run -p deliberate-mcp
 ```
 
+## Contributing
+
+```sh
+cargo test --workspace
+cargo clippy --workspace --all-targets --exclude deliberate-app -- -D warnings
+cargo fmt --all --check
+```
+
 ## License
 
-MIT
+[MIT](LICENSE)
