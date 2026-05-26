@@ -65,7 +65,7 @@ pub async fn get_step_impact(
     drop(s);
 
     let server = ReasoningServer::for_analysis(history, branches);
-    server.impact_of(step_number).map_err(|e| e)
+    server.impact_of(step_number)
 }
 
 #[tauri::command]

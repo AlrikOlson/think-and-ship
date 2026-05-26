@@ -214,10 +214,10 @@ impl AppState {
             let sessions_dir = dir.join("sessions");
             // Default history first.
             let default_path = sessions_dir.join(format!("{}.json", Persistence::default_stem()));
-            if let Some(history) = read_history(&default_path) {
-                if let Some(snap) = sessions.get_mut("") {
-                    snap.replace_from_history(history);
-                }
+            if let Some(history) = read_history(&default_path)
+                && let Some(snap) = sessions.get_mut("")
+            {
+                snap.replace_from_history(history);
             }
             // Then any named sessions.
             if let Ok(entries) = std::fs::read_dir(&sessions_dir) {

@@ -99,10 +99,8 @@ fn run_notify_loop(sessions_dir: PathBuf, bridge_tx: mpsc::UnboundedSender<Vec<P
                         paths.push(p.clone());
                     }
                 }
-                if !paths.is_empty() {
-                    if bridge_tx.send(paths).is_err() {
-                        return;
-                    }
+                if !paths.is_empty() && bridge_tx.send(paths).is_err() {
+                    return;
                 }
             }
             Ok(Err(errs)) => {
