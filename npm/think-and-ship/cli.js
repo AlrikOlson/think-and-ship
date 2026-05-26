@@ -124,9 +124,11 @@ Usage:
   think-and-ship --check       Verify both servers are installed and working
   think-and-ship --version     Show version info for all components
   think-and-ship --help        Show this help message
-  think-and-ship init          Set up MCP config for the current project
-  think-and-ship init --dry-run  Show what would be written without writing
-  think-and-ship init --force    Overwrite existing server config
+  think-and-ship init               Set up MCP config for the current project
+  think-and-ship init --with-claude-md  Also generate CLAUDE.md with tool reference
+  think-and-ship init --full        MCP config + CLAUDE.md in one shot
+  think-and-ship init --dry-run     Show what would be written without writing
+  think-and-ship init --force       Overwrite existing config
 
 Install:
   npm install -g think-and-ship    Install globally
@@ -226,6 +228,43 @@ function detectProject(cwd) {
   return null;
 }
 
+const CLAUDE_MD_MARKER = "<!-- think-and-ship -->";
+
+function generateClaudeMd(project) {
+  const verifyBlock = project
+    ? `\n## Verification\n\nThis is a ${project.name} project. Use these commands to verify changes:\n\n${project.verify.map((c) => `- \`${c}\``).join("\n")}\n`
+    : "";
+
+  return `${CLAUDE_MD_MARKER}
+# think-and-ship
+
+Two MCP servers are configured: **deliberate** (reasoning) and **resolute** (execution).
+
+## When to use which
+
+| Server | Purpose | Key tools |
+|--------|---------|-----------|
+| deliberate | Record reasoning steps, branch hypotheses, pin conclusions | \`deliberate_record_step\`, \`deliberate_pin_step\`, \`deliberate_trace_checkpoint\` |
+| resolute | Track execution: objectives, tasks, actions, quality gates | \`resolute_set_objective\`, \`resolute_plan\`, \`resolute_start\`, \`resolute_record\`, \`resolute_check\`, \`resolute_ship\` |
+
+## Cross-referencing
+
+Link reasoning to execution:
+- On \`deliberate_record_step\`, pass \`execution_ref: "task:<id>"\` to link to a resolute task
+- On \`resolute_record\`, pass \`deliberate_step: <N>\` to link back to reasoning
+
+## Quick-start workflow
+
+1. \`resolute_set_objective\` — define the goal
+2. \`resolute_plan\` — break into tasks
+3. \`deliberate_record_step\` — record your reasoning (open)
+4. \`resolute_start\` → \`resolute_record\` → \`resolute_complete\` — do the work
+5. \`resolute_check\` — record test/lint results
+6. \`resolute_ship\` — finalize
+7. \`deliberate_record_step\` — record outcome (close)
+${verifyBlock}`;
+}
+
 function readJsonSafe(filePath) {
   try {
     return JSON.parse(fs.readFileSync(filePath, "utf8"));
@@ -238,6 +277,7 @@ function cmdInit() {
   const args = process.argv.slice(3);
   const dryRun = args.includes("--dry-run");
   const force = args.includes("--force");
+  const withClaudeMd = args.includes("--with-claude-md") || args.includes("--full");
   const cwd = process.cwd();
 
   console.log(`think-and-ship init v${VERSION}\n`);
@@ -311,13 +351,46 @@ function cmdInit() {
     console.log("  Preserved existing servers");
   }
 
-  console.log("\nYou're ready! Start a conversation and both servers will connect.");
-  if (project) {
-    console.log(`\nDetected ${project.name} project — your agent can use:`);
-    for (const cmd of project.verify) {
-      console.log(`  ${cmd}`);
+  if (!withClaudeMd) {
+    console.log("\nYou're ready! Start a conversation and both servers will connect.");
+    if (project) {
+      console.log(`\nDetected ${project.name} project — your agent can use:`);
+      for (const cmd of project.verify) {
+        console.log(`  ${cmd}`);
+      }
     }
+    console.log("\nTip: run with --with-claude-md to also generate a CLAUDE.md tool reference.");
+    return;
   }
+
+  const claudeMdPath = path.join(cwd, "CLAUDE.md");
+  const claudeMdContent = generateClaudeMd(project);
+  const existingClaudeMd = fs.existsSync(claudeMdPath)
+    ? fs.readFileSync(claudeMdPath, "utf8")
+    : null;
+
+  if (existingClaudeMd && existingClaudeMd.includes(CLAUDE_MD_MARKER) && !force) {
+    console.log("CLAUDE.md already contains think-and-ship section. Use --force to overwrite.");
+  } else if (dryRun) {
+    if (existingClaudeMd) {
+      console.log("Would append to CLAUDE.md:\n");
+    } else {
+      console.log("Would create CLAUDE.md:\n");
+    }
+    console.log(claudeMdContent);
+  } else if (existingClaudeMd && existingClaudeMd.includes(CLAUDE_MD_MARKER) && force) {
+    const before = existingClaudeMd.split(CLAUDE_MD_MARKER)[0];
+    fs.writeFileSync(claudeMdPath, before.trimEnd() + "\n\n" + claudeMdContent + "\n");
+    console.log("Replaced think-and-ship section in CLAUDE.md");
+  } else if (existingClaudeMd) {
+    fs.writeFileSync(claudeMdPath, existingClaudeMd.trimEnd() + "\n\n" + claudeMdContent + "\n");
+    console.log("Appended think-and-ship section to CLAUDE.md");
+  } else {
+    fs.writeFileSync(claudeMdPath, claudeMdContent + "\n");
+    console.log("Created CLAUDE.md with think-and-ship tool reference");
+  }
+
+  console.log("\nYou're ready! The agent will see the tool reference on first prompt.");
 }
 
 const arg = process.argv[2];
