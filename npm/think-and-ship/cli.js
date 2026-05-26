@@ -297,58 +297,51 @@ function cmdInit() {
   const alreadyHasDeliberate = existing?.mcpServers?.deliberate;
   const alreadyHasResolute = existing?.mcpServers?.resolute;
 
-  if (alreadyHasDeliberate && alreadyHasResolute && !force) {
-    console.log(
-      `Both servers already configured in ${ide.configFile}\n` +
-        "Nothing to do. Use --force to overwrite."
-    );
-    return;
-  }
+  const mcpAlreadyDone = alreadyHasDeliberate && alreadyHasResolute && !force;
 
-  let config;
-  if (existing && !force) {
-    config = { ...existing };
-    if (!config.mcpServers) config.mcpServers = {};
-    if (!alreadyHasDeliberate) {
-      config.mcpServers.deliberate = MCP_SERVERS_CONFIG.deliberate;
+  if (!mcpAlreadyDone) {
+    let config;
+    if (existing && !force) {
+      config = { ...existing };
+      if (!config.mcpServers) config.mcpServers = {};
+      if (!alreadyHasDeliberate) {
+        config.mcpServers.deliberate = MCP_SERVERS_CONFIG.deliberate;
+      }
+      if (!alreadyHasResolute) {
+        config.mcpServers.resolute = MCP_SERVERS_CONFIG.resolute;
+      }
+    } else {
+      if (existing && force) {
+        config = { ...existing, mcpServers: { ...existing.mcpServers, ...MCP_SERVERS_CONFIG } };
+      } else {
+        config = { mcpServers: { ...MCP_SERVERS_CONFIG } };
+      }
     }
-    if (!alreadyHasResolute) {
-      config.mcpServers.resolute = MCP_SERVERS_CONFIG.resolute;
+
+    const output = JSON.stringify(config, null, 2) + "\n";
+
+    if (dryRun) {
+      console.log(`Would write to ${ide.configFile}:\n`);
+      console.log(output);
+    } else {
+      const dir = path.dirname(configPath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(configPath, output);
+
+      const added = [];
+      if (!alreadyHasDeliberate || force) added.push("deliberate");
+      if (!alreadyHasResolute || force) added.push("resolute");
+
+      console.log(`Wrote ${ide.configFile}`);
+      console.log(`  Added: ${added.join(", ")}`);
+      if (existing && !force) {
+        console.log("  Preserved existing servers");
+      }
     }
   } else {
-    config = {
-      mcpServers: {
-        ...(existing && !force ? existing.mcpServers : {}),
-        ...MCP_SERVERS_CONFIG,
-      },
-    };
-    if (existing && force) {
-      config = { ...existing, mcpServers: { ...existing.mcpServers, ...MCP_SERVERS_CONFIG } };
-    }
-  }
-
-  const output = JSON.stringify(config, null, 2) + "\n";
-
-  if (dryRun) {
-    console.log(`Would write to ${ide.configFile}:\n`);
-    console.log(output);
-    return;
-  }
-
-  const dir = path.dirname(configPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  fs.writeFileSync(configPath, output);
-
-  const added = [];
-  if (!alreadyHasDeliberate || force) added.push("deliberate");
-  if (!alreadyHasResolute || force) added.push("resolute");
-
-  console.log(`Wrote ${ide.configFile}`);
-  console.log(`  Added: ${added.join(", ")}`);
-  if (existing && !force) {
-    console.log("  Preserved existing servers");
+    console.log(`Both servers already configured in ${ide.configFile}`);
   }
 
   if (!withClaudeMd) {
