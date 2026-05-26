@@ -1,6 +1,6 @@
 {
   "name": "think-and-ship",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Two MCP servers for AI agents — structured reasoning (deliberate) + structured execution (resolute). One command installs both.",
   "license": "MIT",
   "repository": {
@@ -11,8 +11,8 @@
     "think-and-ship": "cli.js"
   },
   "dependencies": {
-    "deliberate-mcp": "0.3.0",
-    "resolute-mcp": "0.1.0"
+    "deliberate-mcp": "0.3.1",
+    "resolute-mcp": "0.1.1"
   },
   "files": [
     "cli.js",

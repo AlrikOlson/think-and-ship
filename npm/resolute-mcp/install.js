@@ -57,8 +57,14 @@ function tryCargoInstall() {
 
 function download(url) {
   return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const opts = {
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
+      headers: { "User-Agent": "think-and-ship-installer" },
+    };
     https
-      .get(url, (res) => {
+      .get(opts, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
           return download(res.headers.location).then(resolve, reject);
         }
@@ -78,14 +84,25 @@ async function tryGithubRelease() {
   const platformKey = getPlatformKey();
   if (!platformKey) return false;
 
-  const assetName = `${BIN_NAME}-v${VERSION}-${platformKey}.tar.gz`;
-  const url = `https://github.com/${REPO}/releases/download/v${VERSION}/${assetName}`;
+  const assetPattern = `${BIN_NAME}-v`;
+  const assetSuffix = `-${platformKey}.tar.gz`;
 
-  console.log(`${BIN_NAME}: downloading prebuilt binary...`);
+  console.log(`${BIN_NAME}: finding latest release...`);
   try {
-    const tarball = await download(url);
+    const meta = JSON.parse(
+      (await download(`https://api.github.com/repos/${REPO}/releases/latest`)).toString()
+    );
+    const asset = (meta.assets || []).find(
+      (a) => a.name.startsWith(assetPattern) && a.name.endsWith(assetSuffix)
+    );
+    if (!asset) {
+      console.error(`${BIN_NAME}: no matching asset for ${platformKey} in release ${meta.tag_name}`);
+      return false;
+    }
+    console.log(`${BIN_NAME}: downloading ${asset.name}...`);
+    const tarball = await download(asset.browser_download_url);
     fs.mkdirSync(BIN_DIR, { recursive: true });
-    const tmpTar = path.join(os.tmpdir(), assetName);
+    const tmpTar = path.join(os.tmpdir(), asset.name);
     fs.writeFileSync(tmpTar, tarball);
     execSync(`tar xzf "${tmpTar}" -C "${BIN_DIR}"`, { stdio: "ignore" });
     fs.unlinkSync(tmpTar);
@@ -100,9 +117,22 @@ async function tryGithubRelease() {
   return false;
 }
 
+function isRealBinary(filePath) {
+  try {
+    const buf = fs.readFileSync(filePath);
+    if (buf.length < 1024) {
+      const head = buf.toString("utf8", 0, buf.length);
+      if (head.includes("binary not installed") || head.includes("npm rebuild")) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function main() {
   const binPath = path.join(BIN_DIR, BIN_NAME);
-  if (fs.existsSync(binPath)) {
+  if (fs.existsSync(binPath) && isRealBinary(binPath)) {
     console.log(`${BIN_NAME}: binary already exists, skipping install`);
     return;
   }

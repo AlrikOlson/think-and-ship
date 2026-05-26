@@ -1,6 +1,6 @@
 {
   "name": "resolute-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Structured execution tracking for autonomous AI development — the 'doing' half of think-and-ship",
   "license": "MIT",
   "repository": {
