@@ -9,8 +9,10 @@ crates/deliberate-mcp/app/src-tauri/gen/schemas/
 .claude/
 .cursor/
 .windsurf/
+.continue/
 .vscode/mcp.json
 .mcp.json
 .ministr.toml
 .github/hooks/
 CLAUDE.md
+windsurf/
