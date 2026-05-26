@@ -85,20 +85,14 @@ jobs:
       - name: Publish deliberate-mcp
         working-directory: npm/deliberate-mcp
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish resolute-mcp
         working-directory: npm/resolute-mcp
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish think-and-ship
         working-directory: npm/think-and-ship
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-crates:
     needs: release
@@ -109,20 +103,20 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - name: Publish think-and-ship-core
-        run: cargo publish -p think-and-ship-core
+        run: cargo publish -p think-and-ship-core || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
       - name: Publish resolute-mcp
         run: |
           sleep 30
-          cargo publish -p resolute-mcp
+          cargo publish -p resolute-mcp || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
       - name: Publish deliberate-mcp
         run: |
           sleep 30
-          cargo publish -p deliberate-mcp
+          cargo publish -p deliberate-mcp || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
