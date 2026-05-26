@@ -1,13 +1,9 @@
 # think-and-ship
 
-Two MCP servers for AI agents. One thinks, one ships.
+[![npm](https://img.shields.io/npm/v/think-and-ship)](https://www.npmjs.com/package/think-and-ship)
+[![CI](https://github.com/AlrikOlson/think-and-ship/actions/workflows/ci.yml/badge.svg)](https://github.com/AlrikOlson/think-and-ship/actions/workflows/ci.yml)
 
-**think-and-ship** installs both servers with a single command — no Rust toolchain required.
-
-| Server | What it tracks | Tools |
-|--------|---------------|-------|
-| **deliberate-mcp** | Structured reasoning — steps, branches, revisions, confidence | 11 under `deliberate_` |
-| **resolute-mcp** | Structured execution — objectives, plans, tasks, checks, artifacts | 11 under `resolute_` |
+Two MCP servers for AI agents. One records structured reasoning, the other records structured execution. One command installs both.
 
 ## Quickstart
 
@@ -17,29 +13,31 @@ cd your-project
 think-and-ship init --full
 ```
 
-That's it. Both servers installed, MCP config written for your IDE, CLAUDE.md generated with tool reference. Start a conversation and go.
+Both servers installed, MCP config written for your IDE, CLAUDE.md generated with tool reference. Start a conversation and go.
 
 ## CLI
 
-```
-think-and-ship init               Set up MCP config for the current project
-think-and-ship init --full        MCP config + CLAUDE.md in one shot
-think-and-ship init --with-claude-md  Also generate CLAUDE.md with tool reference
-think-and-ship init --dry-run     Show what would be written without writing
-think-and-ship init --force       Overwrite existing config
-think-and-ship doctor             Diagnose setup issues
-think-and-ship status             Show project info and config state
-think-and-ship --check            Verify both servers are installed
-think-and-ship --version          Show version info for all components
-```
+| Command | What it does |
+|---------|-------------|
+| `init` | Write MCP config for your IDE |
+| `init --full` | MCP config + CLAUDE.md tool reference |
+| `init --dry-run` | Preview without writing |
+| `init --force` | Overwrite existing config |
+| `doctor` | Diagnose setup issues |
+| `status` | Show project info |
+| `--check` | Verify both servers installed |
+| `--version` | Show versions |
 
-## How it works
+## What's inside
 
-When you `npm install think-and-ship`, it pulls in both server packages as dependencies. Each package downloads a prebuilt binary for your platform (macOS arm64/x64, Linux x64) during its own postinstall step. No compilation needed.
+| Package | What it does |
+|---------|-------------|
+| [deliberate-mcp](https://www.npmjs.com/package/deliberate-mcp) | Structured reasoning traces (11 tools) |
+| [resolute-mcp](https://www.npmjs.com/package/resolute-mcp) | Structured execution tracking (11 tools) |
 
-`think-and-ship init` detects your IDE (Claude Code, Cursor, Windsurf) and project type (Rust, Node, Python, Go), then writes MCP config with smart defaults and optionally a CLAUDE.md tool reference.
+Both download prebuilt binaries for your platform (macOS arm64/x64, Linux x64). No Rust needed.
 
-Full documentation: [github.com/AlrikOlson/think-and-ship](https://github.com/AlrikOlson/think-and-ship)
+[Full documentation](https://github.com/AlrikOlson/think-and-ship)
 
 ## License
 

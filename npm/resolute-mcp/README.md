@@ -1,24 +1,20 @@
 # resolute-mcp
 
-Structured execution tracking for autonomous AI development.
+[![npm](https://img.shields.io/npm/v/resolute-mcp)](https://www.npmjs.com/package/resolute-mcp)
 
-Part of [think-and-ship](https://github.com/AlrikOlson/think-and-ship) — pairs with [deliberate-mcp](https://github.com/AlrikOlson/think-and-ship/tree/main/crates/deliberate-mcp) for reasoning traces.
+MCP server for structured execution tracking. The agent records *what* it did — objectives, task plans, actions, quality gates, artifacts.
+
+Part of [think-and-ship](https://github.com/AlrikOlson/think-and-ship). Pairs with [deliberate-mcp](https://www.npmjs.com/package/deliberate-mcp) for reasoning traces.
 
 ## Install
 
 ```sh
-npx resolute-mcp
+npm install -g resolute-mcp
 ```
 
-Or with cargo:
+Or install both servers at once: `npm install -g think-and-ship`
 
-```sh
-cargo install resolute-mcp
-```
-
-## Configure (Claude Code)
-
-Add to `.mcp.json`:
+## Configure
 
 ```json
 {
@@ -33,19 +29,11 @@ Add to `.mcp.json`:
 
 ## Tools
 
-| Tool | Purpose |
-|------|---------|
-| `resolute_set_objective` | Define goal + acceptance criteria |
-| `resolute_plan` | Add/remove/reorder tasks |
-| `resolute_start` | Begin work on a task |
-| `resolute_record` | Log an action (accepts `deliberate_step` cross-ref) |
-| `resolute_complete` | Close a task with artifacts |
-| `resolute_block` | Mark a task blocked |
-| `resolute_check` | Record a quality gate result |
-| `resolute_ship` | Ship, reviewing all checks |
-| `resolute_status` | Full state snapshot (recovery tool) |
-| `resolute_export` | Export trace (markdown/JSON) |
-| `resolute_reset` | Wipe everything |
+11 tools under the `resolute_` prefix:
+
+`resolute_set_objective` | `resolute_plan` | `resolute_start` | `resolute_record` | `resolute_complete` | `resolute_block` | `resolute_check` | `resolute_ship` | `resolute_status` | `resolute_export` | `resolute_reset`
+
+[Full documentation](https://github.com/AlrikOlson/think-and-ship)
 
 ## License
 

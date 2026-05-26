@@ -669,6 +669,7 @@ dependencies = [
  "deliberate-mcp",
  "notify",
  "notify-debouncer-full",
+ "resolute-mcp",
  "serde",
  "serde_json",
  "tauri",

@@ -1,24 +1,20 @@
 # deliberate-mcp
 
-Structured, branching, revisable reasoning traces over MCP.
+[![npm](https://img.shields.io/npm/v/deliberate-mcp)](https://www.npmjs.com/package/deliberate-mcp)
 
-Part of [think-and-ship](https://github.com/AlrikOlson/think-and-ship) — pairs with [resolute-mcp](https://github.com/AlrikOlson/think-and-ship/tree/main/crates/resolute-mcp) for execution tracking.
+MCP server for structured reasoning traces. The agent records *why* before it acts — steps, branches, revisions, confidence, dependencies.
+
+Part of [think-and-ship](https://github.com/AlrikOlson/think-and-ship). Pairs with [resolute-mcp](https://www.npmjs.com/package/resolute-mcp) for execution tracking.
 
 ## Install
 
 ```sh
-npx deliberate-mcp
+npm install -g deliberate-mcp
 ```
 
-Or with cargo:
+Or install both servers at once: `npm install -g think-and-ship`
 
-```sh
-cargo install deliberate-mcp
-```
-
-## Configure (Claude Code)
-
-Add to `.mcp.json`:
+## Configure
 
 ```json
 {
@@ -36,19 +32,11 @@ Add to `.mcp.json`:
 
 ## Tools
 
-| Tool | Purpose |
-|------|---------|
-| `deliberate_record_step` | Record a reasoning step |
-| `deliberate_revise_estimate` | Adjust step count estimate |
-| `deliberate_pin_step` | Pin a load-bearing conclusion |
-| `deliberate_set_branch_status` | Mark branch active/merged/dead |
-| `deliberate_trace_checkpoint` | Trace-wide health diagnostics |
-| `deliberate_get_step` | Fetch a specific step |
-| `deliberate_search_trace` | Search across the trace |
-| `deliberate_step_impact` | Blast radius of revising a step |
-| `deliberate_engine_status` | Engine introspection |
-| `deliberate_export_trace` | Export (markdown/JSON/console) |
-| `deliberate_wipe_trace` | Wipe everything |
+11 tools under the `deliberate_` prefix:
+
+`deliberate_record_step` | `deliberate_pin_step` | `deliberate_trace_checkpoint` | `deliberate_search_trace` | `deliberate_get_step` | `deliberate_step_impact` | `deliberate_revise_estimate` | `deliberate_set_branch_status` | `deliberate_engine_status` | `deliberate_export_trace` | `deliberate_wipe_trace`
+
+[Full documentation](https://github.com/AlrikOlson/think-and-ship)
 
 ## License
 

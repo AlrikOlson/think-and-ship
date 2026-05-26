@@ -17,3 +17,4 @@ crates/deliberate-mcp/app/src-tauri/gen/schemas/
 **/CLAUDE.md
 **/windsurf/
 **/.github/copilot-instructions.md
+**/AGENTS.md
