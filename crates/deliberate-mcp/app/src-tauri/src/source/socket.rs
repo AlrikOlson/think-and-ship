@@ -21,10 +21,7 @@ pub async fn run(path: PathBuf, tx: mpsc::UnboundedSender<SourceEvent>) {
     loop {
         match UnixStream::connect(&path).await {
             Ok(stream) => {
-                info!(
-                    "broadcast socket connected: {}",
-                    path.display(),
-                );
+                info!("broadcast socket connected: {}", path.display(),);
                 if tx.send(SourceEvent::SocketConnected).is_err() {
                     return;
                 }
@@ -62,10 +59,7 @@ pub async fn run(path: PathBuf, tx: mpsc::UnboundedSender<SourceEvent>) {
                 }
             }
             Err(e) => {
-                debug!(
-                    "broadcast socket {} not available: {e}",
-                    path.display(),
-                );
+                debug!("broadcast socket {} not available: {e}", path.display(),);
             }
         }
         tokio::time::sleep(backoff).await;

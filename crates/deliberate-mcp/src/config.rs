@@ -210,11 +210,14 @@ pub fn load_config() -> DeliberateConfig {
         config.display.color_output = false;
     }
 
-    if let Some(v) = parse_int_env::<u64>(env::var("DELIBERATE_SESSION_TIMEOUT").ok().as_deref(), 1) {
+    if let Some(v) = parse_int_env::<u64>(env::var("DELIBERATE_SESSION_TIMEOUT").ok().as_deref(), 1)
+    {
         config.system.session_timeout = v;
     }
 
-    if let Some(v) = parse_int_env::<u32>(env::var("DELIBERATE_MAX_BRANCH_DEPTH").ok().as_deref(), 1) {
+    if let Some(v) =
+        parse_int_env::<u32>(env::var("DELIBERATE_MAX_BRANCH_DEPTH").ok().as_deref(), 1)
+    {
         config.system.max_branch_depth = v;
     }
 
@@ -333,7 +336,6 @@ pub fn namespace_session_id(project_id: &str, raw: &str) -> String {
     }
     combined
 }
-
 
 /// Same allowlist as persistence::is_safe_session_id. Kept here so the
 /// config layer can validate before passing values downstream.

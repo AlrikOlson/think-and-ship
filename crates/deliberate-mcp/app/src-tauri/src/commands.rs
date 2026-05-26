@@ -27,7 +27,9 @@ pub struct SnapshotResponse {
 }
 
 #[tauri::command]
-pub async fn get_snapshot(state: tauri::State<'_, Arc<Mutex<AppState>>>) -> Result<SnapshotResponse, String> {
+pub async fn get_snapshot(
+    state: tauri::State<'_, Arc<Mutex<AppState>>>,
+) -> Result<SnapshotResponse, String> {
     let s = state.lock().await;
     let sessions: Vec<Snapshot> = s
         .sessions
@@ -46,7 +48,9 @@ pub async fn get_snapshot(state: tauri::State<'_, Arc<Mutex<AppState>>>) -> Resu
 }
 
 #[tauri::command]
-pub async fn source_info(state: tauri::State<'_, Arc<Mutex<AppState>>>) -> Result<SourceInfo, String> {
+pub async fn source_info(
+    state: tauri::State<'_, Arc<Mutex<AppState>>>,
+) -> Result<SourceInfo, String> {
     Ok(state.lock().await.source.clone())
 }
 
@@ -106,7 +110,9 @@ pub async fn search(
 }
 
 #[tauri::command]
-pub async fn reveal_data_dir(state: tauri::State<'_, Arc<Mutex<AppState>>>) -> Result<Option<String>, String> {
+pub async fn reveal_data_dir(
+    state: tauri::State<'_, Arc<Mutex<AppState>>>,
+) -> Result<Option<String>, String> {
     let s = state.lock().await;
     Ok(s.source.data_dir.as_ref().map(|p| p.display().to_string()))
 }
