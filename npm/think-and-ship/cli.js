@@ -19,12 +19,27 @@ const SERVERS = [
   },
 ];
 
-function findBinary(name) {
-  const npmBin = path.join(__dirname, "node_modules", name, "bin", name);
-  if (fs.existsSync(npmBin)) return npmBin;
+function isRealBinary(filePath) {
+  try {
+    const buf = fs.readFileSync(filePath);
+    if (buf.length < 4) return false;
+    const head = buf.toString("utf8", 0, Math.min(buf.length, 256));
+    if (head.includes("binary not installed")) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
 
-  const peerBin = path.join(__dirname, "..", name, "bin", name);
-  if (fs.existsSync(peerBin)) return peerBin;
+function findBinary(name) {
+  const candidates = [
+    path.join(__dirname, "node_modules", name, "bin", name),
+    path.join(__dirname, "..", name, "bin", name),
+  ];
+
+  for (const p of candidates) {
+    if (fs.existsSync(p) && isRealBinary(p)) return p;
+  }
 
   try {
     const which = execSync(`which ${name} 2>/dev/null`, {
@@ -38,12 +53,18 @@ function findBinary(name) {
 
 function getServerVersion(binPath) {
   try {
-    const out = execSync(`"${binPath}" --version 2>/dev/null`, {
+    const out = execSync(`"${binPath}" --version 2>&1`, {
       encoding: "utf8",
       timeout: 5000,
-    }).trim();
-    return out || "installed (version unknown)";
-  } catch {
+    });
+    const firstLine = out.trim().split("\n")[0];
+    return firstLine || "installed (version unknown)";
+  } catch (e) {
+    if (e.stdout || e.stderr) {
+      const out = (e.stdout || e.stderr || "").trim();
+      const firstLine = out.split("\n")[0];
+      if (firstLine && !firstLine.includes("not installed")) return firstLine;
+    }
     return null;
   }
 }
