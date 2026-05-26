@@ -121,14 +121,16 @@ function cmdHelp() {
 Two MCP servers. One thinks, one ships.
 
 Usage:
-  think-and-ship --check       Verify both servers are installed and working
-  think-and-ship --version     Show version info for all components
-  think-and-ship --help        Show this help message
   think-and-ship init               Set up MCP config for the current project
-  think-and-ship init --with-claude-md  Also generate CLAUDE.md with tool reference
   think-and-ship init --full        MCP config + CLAUDE.md in one shot
+  think-and-ship init --with-claude-md  Also generate CLAUDE.md with tool reference
   think-and-ship init --dry-run     Show what would be written without writing
   think-and-ship init --force       Overwrite existing config
+  think-and-ship doctor             Diagnose setup issues
+  think-and-ship status             Show project info and config state
+  think-and-ship --check            Verify both servers are installed
+  think-and-ship --version          Show version info for all components
+  think-and-ship --help             Show this help message
 
 Install:
   npm install -g think-and-ship    Install globally
@@ -386,6 +388,133 @@ function cmdInit() {
   console.log("\nYou're ready! The agent will see the tool reference on first prompt.");
 }
 
+function cmdDoctor() {
+  console.log(`think-and-ship doctor v${VERSION}\n`);
+  const cwd = process.cwd();
+  let issues = 0;
+
+  for (const server of SERVERS) {
+    const bin = findBinary(server.name);
+    if (!bin) {
+      console.log(`  [FAIL] ${server.name}: binary not found`);
+      console.log(`         Fix: npm install -g think-and-ship`);
+      issues++;
+    } else {
+      const ver = getServerVersion(bin);
+      if (ver) {
+        console.log(`  [ OK ] ${server.name}: ${ver} (${bin})`);
+      } else {
+        console.log(`  [WARN] ${server.name}: found at ${bin} but --version failed`);
+        issues++;
+      }
+    }
+  }
+
+  console.log();
+
+  const ide = detectIDE(cwd);
+  const configPath = path.join(cwd, ide.configFile);
+  if (fs.existsSync(configPath)) {
+    const config = readJsonSafe(configPath);
+    if (!config) {
+      console.log(`  [FAIL] ${ide.configFile}: exists but invalid JSON`);
+      console.log(`         Fix: check syntax or run: think-and-ship init --force`);
+      issues++;
+    } else if (!config.mcpServers?.deliberate || !config.mcpServers?.resolute) {
+      const missing = [];
+      if (!config.mcpServers?.deliberate) missing.push("deliberate");
+      if (!config.mcpServers?.resolute) missing.push("resolute");
+      console.log(`  [WARN] ${ide.configFile}: missing ${missing.join(", ")}`);
+      console.log(`         Fix: think-and-ship init`);
+      issues++;
+    } else {
+      console.log(`  [ OK ] ${ide.configFile}: both servers configured`);
+    }
+  } else {
+    console.log(`  [WARN] ${ide.configFile}: not found`);
+    console.log(`         Fix: think-and-ship init`);
+    issues++;
+  }
+
+  const dataDirs = [
+    { name: "deliberate", dir: path.join(os.homedir(), ".local", "share", "deliberate-mcp") },
+    { name: "resolute", dir: path.join(os.homedir(), ".local", "share", "resolute-mcp") },
+  ];
+
+  for (const { name, dir } of dataDirs) {
+    if (fs.existsSync(dir)) {
+      try {
+        fs.accessSync(dir, fs.constants.W_OK);
+        console.log(`  [ OK ] ${name} data: ${dir}`);
+      } catch {
+        console.log(`  [FAIL] ${name} data: ${dir} (not writable)`);
+        console.log(`         Fix: chmod u+w "${dir}"`);
+        issues++;
+      }
+    } else {
+      console.log(`  [ -- ] ${name} data: ${dir} (will be created on first use)`);
+    }
+  }
+
+  const claudeMdPath = path.join(cwd, "CLAUDE.md");
+  if (fs.existsSync(claudeMdPath)) {
+    const content = fs.readFileSync(claudeMdPath, "utf8");
+    if (content.includes(CLAUDE_MD_MARKER)) {
+      console.log(`  [ OK ] CLAUDE.md: think-and-ship section present`);
+    } else {
+      console.log(`  [ -- ] CLAUDE.md: exists but no think-and-ship section`);
+      console.log(`         Tip: think-and-ship init --with-claude-md`);
+    }
+  } else {
+    console.log(`  [ -- ] CLAUDE.md: not found`);
+    console.log(`         Tip: think-and-ship init --full`);
+  }
+
+  console.log();
+  if (issues === 0) {
+    console.log("No issues found. Everything looks good.");
+  } else {
+    console.log(`Found ${issues} issue${issues > 1 ? "s" : ""}. See Fix suggestions above.`);
+  }
+}
+
+function cmdStatus() {
+  console.log(`think-and-ship v${VERSION}\n`);
+  const cwd = process.cwd();
+
+  const ide = detectIDE(cwd);
+  const project = detectProject(cwd);
+
+  console.log(`  Project:  ${path.basename(cwd)}`);
+  console.log(`  Dir:      ${cwd}`);
+  console.log(`  IDE:      ${ide.name} (${ide.configFile})`);
+  console.log(`  Type:     ${project ? `${project.name} (${project.marker})` : "unknown"}`);
+  if (project) {
+    console.log(`  Verify:   ${project.verify.join(", ")}`);
+  }
+
+  console.log();
+
+  const configPath = path.join(cwd, ide.configFile);
+  if (fs.existsSync(configPath)) {
+    const config = readJsonSafe(configPath);
+    if (config?.mcpServers) {
+      const servers = Object.keys(config.mcpServers);
+      console.log(`  MCP servers: ${servers.join(", ")}`);
+    }
+  } else {
+    console.log(`  MCP config: not found (run: think-and-ship init)`);
+  }
+
+  const claudeMdPath = path.join(cwd, "CLAUDE.md");
+  if (fs.existsSync(claudeMdPath)) {
+    const content = fs.readFileSync(claudeMdPath, "utf8");
+    console.log(`  CLAUDE.md: ${content.includes(CLAUDE_MD_MARKER) ? "has tool reference" : "exists (no tool reference)"}`);
+  } else {
+    console.log(`  CLAUDE.md: not found`);
+  }
+}
+
 const arg = process.argv[2];
 
 switch (arg) {
@@ -404,6 +533,12 @@ switch (arg) {
     break;
   case "init":
     cmdInit();
+    break;
+  case "doctor":
+    cmdDoctor();
+    break;
+  case "status":
+    cmdStatus();
     break;
   default:
     console.error(`Unknown command: ${arg}\n`);
