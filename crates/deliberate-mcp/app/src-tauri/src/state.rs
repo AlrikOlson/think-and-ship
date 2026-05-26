@@ -32,6 +32,7 @@ pub struct SourceInfo {
     pub socket_path: Option<PathBuf>,
     pub data_dir: Option<PathBuf>,
     pub persistence_enabled: bool,
+    pub resolute_socket_path: Option<PathBuf>,
 }
 
 /// A single session's snapshot — what the frontend renders. `branches` is
@@ -247,12 +248,15 @@ impl AppState {
             (false, false) => SourceMode::None,
         };
 
+        let resolute_socket_path = resolve_resolute_socket_path();
+
         Self {
             source: SourceInfo {
                 mode,
                 socket_path,
                 data_dir,
                 persistence_enabled,
+                resolute_socket_path,
             },
             sessions,
             active_session: String::new(),
@@ -319,4 +323,16 @@ fn resolve_data_dir() -> Option<PathBuf> {
         }
     }
     None
+}
+
+const DEFAULT_RESOLUTE_SOCKET_PATH: &str = "/tmp/resolute.sock";
+
+fn resolve_resolute_socket_path() -> Option<PathBuf> {
+    if let Ok(raw) = env::var("RESOLUTE_BROADCAST_PATH") {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            return Some(PathBuf::from(trimmed));
+        }
+    }
+    Some(PathBuf::from(DEFAULT_RESOLUTE_SOCKET_PATH))
 }

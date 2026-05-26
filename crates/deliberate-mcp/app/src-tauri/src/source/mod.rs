@@ -3,6 +3,7 @@
 //! [`crate::state::AppState`] and emits Tauri events to the frontend.
 
 pub mod file;
+pub mod resolute_socket;
 pub mod socket;
 
 use std::sync::Arc;
@@ -15,11 +16,13 @@ use tauri::{AppHandle, Emitter};
 use tokio::sync::Mutex;
 use tokio::sync::mpsc;
 
+use resolute_mcp::broadcast::BroadcastFrame as ResoluteBroadcastFrame;
+
 use crate::state::{AppState, SourceMode};
 
 #[derive(Debug)]
 pub enum SourceEvent {
-    /// Real-time frame arrived from the broadcast socket.
+    /// Real-time frame arrived from the deliberate broadcast socket.
     Frame(BroadcastFrame),
     /// Disk snapshot for a session — either the initial load or a
     /// fs-watcher-triggered refresh.
@@ -27,10 +30,16 @@ pub enum SourceEvent {
         session_id: Option<String>,
         history: DeliberateHistory,
     },
-    /// The socket source connected.
+    /// The deliberate socket source connected.
     SocketConnected,
-    /// The socket source disconnected (peer closed or never bound).
+    /// The deliberate socket source disconnected (peer closed or never bound).
     SocketDisconnected,
+    /// Real-time frame from the resolute broadcast socket.
+    ResoluteFrame(ResoluteBroadcastFrame),
+    /// The resolute socket source connected.
+    ResoluteSocketConnected,
+    /// The resolute socket source disconnected.
+    ResoluteSocketDisconnected,
 }
 
 /// Wire-format event the frontend listens to. The frontend keeps its own
@@ -110,6 +119,15 @@ impl Orchestrator {
             });
         }
 
+        // Spawn the resolute socket source.
+        let resolute_path = self.state.lock().await.source.resolute_socket_path.clone();
+        if let Some(path) = resolute_path {
+            let tx_r = tx.clone();
+            tokio::spawn(async move {
+                resolute_socket::run(path, tx_r).await;
+            });
+        }
+
         drop(tx); // tasks own their own clones
 
         while let Some(event) = rx.recv().await {
@@ -151,6 +169,10 @@ impl Orchestrator {
             } => self.apply_snapshot(session_id, history).await,
             SourceEvent::SocketConnected => self.note_source_change(true).await,
             SourceEvent::SocketDisconnected => self.note_source_change(false).await,
+            SourceEvent::ResoluteFrame(frame) => {
+                let _ = self.handle.emit("execution://event", &frame);
+            }
+            SourceEvent::ResoluteSocketConnected | SourceEvent::ResoluteSocketDisconnected => {}
         }
     }
 
