@@ -4,3 +4,13 @@
 node_modules/
 crates/deliberate-mcp/app/src-tauri/target/
 crates/deliberate-mcp/app/src-tauri/gen/schemas/
+
+# Agent / IDE configs (personal, not project)
+.claude/
+.cursor/
+.windsurf/
+.vscode/mcp.json
+.mcp.json
+.ministr.toml
+.github/hooks/
+CLAUDE.md
