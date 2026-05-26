@@ -1,29 +1,72 @@
 # think-and-ship
 
-Two MCP servers. One thinks, one ships.
+Two MCP servers for AI agents. One thinks, one ships.
 
 | Server | What it tracks | Tools |
 |--------|---------------|-------|
 | **deliberate-mcp** | Structured reasoning — steps, branches, revisions, confidence, dependencies | 11 under `deliberate_` |
 | **resolute-mcp** | Structured execution — objectives, plans, tasks, checks, artifacts | 11 under `resolute_` |
 
-Both servers share project identity via `think-and-ship-core`. When
-deployed in the same working directory, they auto-correlate and
-cross-reference each other's data.
+Both servers share project identity via `think-and-ship-core`. When deployed in the same working directory, they auto-correlate and cross-reference each other's data.
 
-## Install
+## Quickstart (5 minutes)
+
+### 1. Install
 
 ```sh
-# From source
+npm install -g think-and-ship
+```
+
+This installs both `deliberate-mcp` and `resolute-mcp` binaries. No Rust toolchain required.
+
+Verify:
+
+```sh
+think-and-ship --check
+```
+
+### 2. Set up your project
+
+```sh
+cd your-project
+think-and-ship init --full
+```
+
+This does three things:
+- Detects your IDE (Claude Code, Cursor, or Windsurf) and writes MCP config
+- Detects your project type (Rust, Node, Python, Go) for verify commands
+- Creates a CLAUDE.md with tool reference so your agent knows how to use both servers
+
+### 3. Start a conversation
+
+Open your IDE and start working. The agent now has structured reasoning and execution tracking from the first prompt.
+
+### Troubleshooting
+
+```sh
+think-and-ship doctor    # diagnose setup issues
+think-and-ship status    # see what's configured
+```
+
+## Install (alternative methods)
+
+```sh
+# npm (recommended — installs prebuilt binaries)
+npm install -g think-and-ship
+
+# From source (requires Rust)
 cargo install --path crates/deliberate-mcp
 cargo install --path crates/resolute-mcp
+
+# npx (run without installing)
+npx think-and-ship --check
 ```
 
 ## Configure
 
 ### Claude Code
 
-Add to your project's `.mcp.json`:
+`think-and-ship init` writes this to `.mcp.json`:
 
 ```json
 {
@@ -45,10 +88,27 @@ Add to your project's `.mcp.json`:
 }
 ```
 
-### Cursor / Windsurf / VS Code
+### Cursor
 
-Same pattern — add both servers to your MCP configuration. Both
-communicate over stdio.
+Same config, written to `.cursor/mcp.json`. `think-and-ship init` detects Cursor automatically when `.cursor/` exists.
+
+### Windsurf
+
+Same config, written to `.windsurf/mcp.json`. Auto-detected when `.windsurf/` exists.
+
+## CLI reference
+
+```
+think-and-ship init               Set up MCP config for the current project
+think-and-ship init --full        MCP config + CLAUDE.md in one shot
+think-and-ship init --with-claude-md  Also generate CLAUDE.md with tool reference
+think-and-ship init --dry-run     Show what would be written without writing
+think-and-ship init --force       Overwrite existing config
+think-and-ship doctor             Diagnose setup issues
+think-and-ship status             Show project info and config state
+think-and-ship --check            Verify both servers are installed
+think-and-ship --version          Show version info for all components
+```
 
 ## How they work together
 
@@ -60,8 +120,7 @@ Both servers resolve the same `project_id` from your working directory:
 <directory-basename>-<fnv1a-hash>
 ```
 
-Override with `DELIBERATE_PROJECT_NAME` (shared) or
-`RESOLUTE_PROJECT_NAME` (resolute-specific).
+Override with `DELIBERATE_PROJECT_NAME` (shared) or `RESOLUTE_PROJECT_NAME` (resolute-specific).
 
 ### Cross-references
 
@@ -69,22 +128,21 @@ When using both servers, link reasoning to execution:
 
 ```
 deliberate_record_step:
-  execution_ref: "task:auth-refactor"    ← points to resolute task
+  execution_ref: "task:auth-refactor"    <- points to resolute task
 
 resolute_record:
-  deliberate_step: 19                    ← points to deliberate step #19
+  deliberate_step: 19                    <- points to deliberate step #19
 ```
 
-`resolute_status` surfaces all cross-refs so you can trace from
-reasoning to execution and back.
+`resolute_status` surfaces all cross-refs so you can trace from reasoning to execution and back.
 
 ### Persistence
 
 Both write atomic JSON files under `~/.local/share/`:
 
 ```
-~/.local/share/deliberate-mcp/sessions/   ← reasoning traces
-~/.local/share/resolute-mcp/sessions/     ← execution traces
+~/.local/share/deliberate-mcp/sessions/   <- reasoning traces
+~/.local/share/resolute-mcp/sessions/     <- execution traces
 ```
 
 ### Broadcast
