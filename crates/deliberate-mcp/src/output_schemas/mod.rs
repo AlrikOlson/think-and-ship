@@ -33,9 +33,7 @@ pub mod trace_checkpoint;
 
 pub use engine_status::{EngineStatusOutput, PinnedStepDescriptor, SessionDescriptor};
 pub use error_envelope::StructuredError;
-pub use mutations::{
-    PinStepOutput, ReviseEstimateOutput, SetBranchStatusOutput, WipeTraceOutput,
-};
+pub use mutations::{PinStepOutput, ReviseEstimateOutput, SetBranchStatusOutput, WipeTraceOutput};
 pub use record_step::{BranchEcho, BranchSummary, RecentStepRollup, RecordStepOutput};
 pub use search_trace::{SearchHit, SearchTraceOutput};
 pub use step_impact::{

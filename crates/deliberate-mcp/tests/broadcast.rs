@@ -139,5 +139,8 @@ async fn broadcast_bind_failure_does_not_block_step() {
     let mut engine = ReasoningServer::new(quiet_config_with_broadcast(path));
     // No panic, no error — the engine just runs unobserved.
     let result = engine.process_step(step(1));
-    assert!(result.is_ok(), "process_step succeeded without a broadcaster");
+    assert!(
+        result.is_ok(),
+        "process_step succeeded without a broadcaster"
+    );
 }

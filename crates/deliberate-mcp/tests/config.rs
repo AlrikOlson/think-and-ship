@@ -254,12 +254,7 @@ fn auto_session_id_is_stable_basename_plus_path_hash() {
         .expect("auto-session should produce a default id");
     let cwd = std::env::current_dir().unwrap();
     let path = cwd.canonicalize().unwrap_or(cwd);
-    let basename = path
-        .file_name()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_lowercase();
+    let basename = path.file_name().unwrap().to_str().unwrap().to_lowercase();
     // New format: just `<basename>-<6hex>`. No timestamp, no random
     // suffix — same project always produces the same session id, so
     // history accumulates across all spawns.
@@ -401,7 +396,11 @@ fn namespace_session_id_clamps_to_128() {
     // long the project id happens to be at test time.
     let long = "x".repeat(200);
     let out = namespace_session_id(&p, &long);
-    assert!(out.len() <= 128, "expected <=128, got {} ({out:?})", out.len());
+    assert!(
+        out.len() <= 128,
+        "expected <=128, got {} ({out:?})",
+        out.len()
+    );
     assert!(
         out.starts_with(&format!("{p}{PROJECT_SEP}")),
         "expected project prefix to survive truncation: {out:?}"

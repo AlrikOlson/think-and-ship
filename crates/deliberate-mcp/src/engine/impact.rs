@@ -25,7 +25,9 @@ impl ReasoningServer {
     /// branches that fork off it (with their merged_into pointer when set).
     pub fn impact_of(&self, step_number: u32) -> Result<Value, String> {
         let Some(target) = self.step_by_number(step_number) else {
-            return Err(format!("No step #{step_number} found in the current trace."));
+            return Err(format!(
+                "No step #{step_number} found in the current trace."
+            ));
         };
 
         // Upstream: walk `dependencies` backwards. Capped at 256 nodes so a
@@ -42,7 +44,9 @@ impl ReasoningServer {
         let mut depended_on_by: Vec<u32> = Vec::new();
         let mut unlabeled: Vec<u32> = Vec::new();
         for s in self.all_steps() {
-            let Some(deps) = &s.dependencies else { continue };
+            let Some(deps) = &s.dependencies else {
+                continue;
+            };
             for edge in deps {
                 if edge.step() == step_number {
                     match edge.relation() {

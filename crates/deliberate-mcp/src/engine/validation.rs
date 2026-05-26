@@ -15,9 +15,7 @@
 //!   diagnostic prose in `validate_required_fields` checks the same
 //!   markers to name the failure mode when recovery couldn't help.
 
-use crate::constants::{
-    CONFIDENCE_MAX, CONFIDENCE_MIN, VALID_PREFIXES, is_valid_purpose,
-};
+use crate::constants::{CONFIDENCE_MAX, CONFIDENCE_MIN, VALID_PREFIXES, is_valid_purpose};
 use crate::domain::{DeliberateStep, DepEdge, NextAction};
 
 use super::core::ReasoningServer;
@@ -168,8 +166,7 @@ impl ReasoningServer {
                     step.rationale = v.to_string();
                     recovered.push("rationale");
                 }
-                "next_action"
-                    if matches!(&step.next_action, NextAction::Text(s) if s.trim().is_empty()) =>
+                "next_action" if matches!(&step.next_action, NextAction::Text(s) if s.trim().is_empty()) =>
                 {
                     step.next_action = NextAction::Text(v.to_string());
                     recovered.push("next_action");
@@ -353,9 +350,9 @@ impl ReasoningServer {
             .iter()
             .filter(|(_, v)| {
                 TRUNC_MARKERS_DIAG.iter().any(|m| v.contains(m))
-                    && RECOVERABLE_FIELD_NAMES.iter().any(|n| {
-                        v.contains(&format!("<{n}>")) || v.contains(&format!("</{n}>"))
-                    })
+                    && RECOVERABLE_FIELD_NAMES
+                        .iter()
+                        .any(|n| v.contains(&format!("<{n}>")) || v.contains(&format!("</{n}>")))
             })
             .map(|(name, _)| *name)
             .collect();
@@ -365,10 +362,7 @@ impl ReasoningServer {
             .map(|(name, _)| *name)
             .collect();
 
-        let head = format!(
-            "Missing or invalid required fields: {}",
-            missing.join(", ")
-        );
+        let head = format!("Missing or invalid required fields: {}", missing.join(", "));
 
         if !pattern_a.is_empty() || recovered_indicates_pattern_a {
             let where_str = if pattern_a.is_empty() {

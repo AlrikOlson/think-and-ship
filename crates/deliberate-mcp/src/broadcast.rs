@@ -207,4 +207,3 @@ async fn fanout_loop(
         *guard = survivors;
     }
 }
-

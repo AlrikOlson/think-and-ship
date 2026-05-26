@@ -89,8 +89,14 @@ fn response_echoes_thought_and_outcome_excerpts() {
     step.thought = "Test thought that has more than a tiny bit of body to be excerpted".into();
     step.outcome = "Outcome describing what was learned".into();
     let v = parse_response(s.process_step(step));
-    assert!(v.get("thought_excerpt").is_some(), "missing thought_excerpt");
-    assert!(v.get("outcome_excerpt").is_some(), "missing outcome_excerpt");
+    assert!(
+        v.get("thought_excerpt").is_some(),
+        "missing thought_excerpt"
+    );
+    assert!(
+        v.get("outcome_excerpt").is_some(),
+        "missing outcome_excerpt"
+    );
 }
 
 #[test]
@@ -130,7 +136,10 @@ fn response_warns_on_low_confidence_dependency() {
     let v = parse_response(s.process_step(s2));
     let warns = v.get("warnings").expect("warnings missing");
     let arr = warns.as_array().unwrap();
-    assert!(arr.iter().any(|w| w.as_str().unwrap_or("").contains("low confidence")));
+    assert!(
+        arr.iter()
+            .any(|w| w.as_str().unwrap_or("").contains("low confidence"))
+    );
 }
 
 #[test]
@@ -147,7 +156,10 @@ fn response_warns_when_step_exceeds_estimate() {
     let v = parse_response(s.process_step(s3));
     let warns = v.get("warnings").expect("warnings missing");
     let arr = warns.as_array().unwrap();
-    assert!(arr.iter().any(|w| w.as_str().unwrap_or("").contains("exceeds estimated_total")));
+    assert!(
+        arr.iter()
+            .any(|w| w.as_str().unwrap_or("").contains("exceeds estimated_total"))
+    );
 }
 
 #[test]
@@ -164,9 +176,15 @@ fn revise_estimate_updates_last_step_in_place() {
 #[test]
 fn revise_estimate_rejects_zero_and_empty_history() {
     let mut s = ReasoningServer::new(quiet_config());
-    assert!(s.revise_estimate(5).is_err(), "should error on empty history");
+    assert!(
+        s.revise_estimate(5).is_err(),
+        "should error on empty history"
+    );
     let _ = s.process_step(step_n(1));
-    assert!(s.revise_estimate(0).is_err(), "should error on zero estimate");
+    assert!(
+        s.revise_estimate(0).is_err(),
+        "should error on zero estimate"
+    );
 }
 
 #[test]
@@ -197,9 +215,18 @@ fn branches_summary_lists_each_active_branch() {
 
     let summary = s.branches_summary();
     assert_eq!(summary.len(), 1);
-    assert_eq!(summary[0].get("name").and_then(|x| x.as_str()), Some("explore-alt"));
-    assert_eq!(summary[0].get("from_step").and_then(|x| x.as_u64()), Some(1));
-    assert_eq!(summary[0].get("status").and_then(|x| x.as_str()), Some("active"));
+    assert_eq!(
+        summary[0].get("name").and_then(|x| x.as_str()),
+        Some("explore-alt")
+    );
+    assert_eq!(
+        summary[0].get("from_step").and_then(|x| x.as_u64()),
+        Some(1)
+    );
+    assert_eq!(
+        summary[0].get("status").and_then(|x| x.as_str()),
+        Some("active")
+    );
 }
 
 #[test]
@@ -268,7 +295,11 @@ fn explicit_session_id_beats_default() {
     let snap = s.sessions_snapshot();
     let mut got: Vec<String> = snap
         .iter()
-        .filter_map(|v| v.get("session_id").and_then(|x| x.as_str()).map(String::from))
+        .filter_map(|v| {
+            v.get("session_id")
+                .and_then(|x| x.as_str())
+                .map(String::from)
+        })
         .collect();
     got.sort();
     let mut expected = vec![ns("auto-fallback"), ns("explicit")];
@@ -291,12 +322,27 @@ fn duplicate_step_number_in_persistent_session_returns_actionable_error() {
     let result = s.process_step(step_n(1));
     let err = match result {
         Err(e) => e.text,
-        Ok(ok) => panic!("expected duplicate-step rejection, got success: {}", ok.text),
+        Ok(ok) => panic!(
+            "expected duplicate-step rejection, got success: {}",
+            ok.text
+        ),
     };
-    assert!(err.contains("step_number 1"), "should name the duplicate number: {err}");
-    assert!(err.contains("step_number: 2"), "should suggest the next number: {err}");
-    assert!(err.contains("revises_step"), "should mention the revision escape hatch: {err}");
-    assert!(err.contains("branch_from"), "should mention the branching escape hatch: {err}");
+    assert!(
+        err.contains("step_number 1"),
+        "should name the duplicate number: {err}"
+    );
+    assert!(
+        err.contains("step_number: 2"),
+        "should suggest the next number: {err}"
+    );
+    assert!(
+        err.contains("revises_step"),
+        "should mention the revision escape hatch: {err}"
+    );
+    assert!(
+        err.contains("branch_from"),
+        "should mention the branching escape hatch: {err}"
+    );
 }
 
 #[test]
@@ -310,7 +356,10 @@ fn duplicate_step_number_is_allowed_when_revising() {
     let mut revision = step_n(2);
     revision.revises_step = Some(1);
     revision.revision_reason = Some("clarification".into());
-    assert!(s.process_step(revision).is_ok(), "revision path must not be blocked");
+    assert!(
+        s.process_step(revision).is_ok(),
+        "revision path must not be blocked"
+    );
 }
 
 #[test]
@@ -342,14 +391,23 @@ fn xml_injection_in_thought_auto_recovers_missing_fields() {
     // The recovered step should now be in the history with the
     // extracted values filled in.
     let stored = s.step_by_number(1).expect("step 1 stored");
-    assert_eq!(stored.outcome, "recovered outcome value", "outcome recovered");
-    assert_eq!(stored.rationale, "recovered rationale text", "rationale recovered");
+    assert_eq!(
+        stored.outcome, "recovered outcome value",
+        "outcome recovered"
+    );
+    assert_eq!(
+        stored.rationale, "recovered rationale text",
+        "rationale recovered"
+    );
     match &stored.next_action {
         NextAction::Text(t) => assert_eq!(t, "recovered next action", "next_action recovered"),
         NextAction::Structured(_) => panic!("expected NextAction::Text"),
     }
     // The thought should be cleaned up — no embedded markup left.
-    assert_eq!(stored.thought, "Real reasoning content here.", "thought truncated at markup");
+    assert_eq!(
+        stored.thought, "Real reasoning content here.",
+        "thought truncated at markup"
+    );
 
     // The response carries a warning naming what was recovered.
     let response: serde_json::Value = serde_json::from_str(&ok.text).unwrap();
@@ -374,7 +432,10 @@ fn xml_injection_recovery_only_fills_empty_fields() {
 
     let _ = s.process_step(step);
     let stored = s.step_by_number(1).expect("step 1 stored");
-    assert_eq!(stored.outcome, "explicit outcome", "explicit value must win");
+    assert_eq!(
+        stored.outcome, "explicit outcome",
+        "explicit value must win"
+    );
 }
 
 #[test]
@@ -412,8 +473,14 @@ fn partial_xml_injection_recovery_errors_only_on_still_missing_fields() {
         !head.contains("outcome"),
         "outcome was recovered; head should not list it as missing: {head}"
     );
-    assert!(head.contains("rationale"), "rationale should be flagged: {head}");
-    assert!(head.contains("next_action"), "next_action should be flagged: {head}");
+    assert!(
+        head.contains("rationale"),
+        "rationale should be flagged: {head}"
+    );
+    assert!(
+        head.contains("next_action"),
+        "next_action should be flagged: {head}"
+    );
 }
 
 #[test]
@@ -502,13 +569,19 @@ fn pin_marks_step_and_recent_steps_promotes_it() {
     // With limit=3 and no pin, step 1 is no longer in recent_steps after step 5.
     let recent = s.recent_steps_rollup(3, Some(5));
     let nums: Vec<u64> = recent.iter().map(|v| v["n"].as_u64().unwrap()).collect();
-    assert!(!nums.contains(&1), "step 1 should be out of unpinned window");
+    assert!(
+        !nums.contains(&1),
+        "step 1 should be out of unpinned window"
+    );
 
     // Pin step 1; it should now appear in the rollup even at limit=3.
     s.pin_step(1, true).unwrap();
     let recent = s.recent_steps_rollup(3, Some(5));
     let nums: Vec<u64> = recent.iter().map(|v| v["n"].as_u64().unwrap()).collect();
-    assert!(nums.contains(&1), "pinned step 1 should re-enter the window: {nums:?}");
+    assert!(
+        nums.contains(&1),
+        "pinned step 1 should re-enter the window: {nums:?}"
+    );
 }
 
 #[test]
@@ -643,7 +716,10 @@ fn merged_into_rejects_unknown_step() {
     b2.branch_from = Some(1);
     let _ = s.process_step(b2);
     let branch_id = s.branches().keys().next().unwrap().clone();
-    assert!(s.set_branch_status(&branch_id, "merged", Some(999)).is_err());
+    assert!(
+        s.set_branch_status(&branch_id, "merged", Some(999))
+            .is_err()
+    );
 }
 
 #[test]
@@ -795,7 +871,12 @@ fn status_snapshot_reflects_engine_state() {
 
     let snap = s.status_snapshot(false);
     assert_eq!(snap["persistence_enabled"].as_bool(), Some(true));
-    assert!(snap["data_dir"].as_str().unwrap().contains(tmp.path().to_str().unwrap()));
+    assert!(
+        snap["data_dir"]
+            .as_str()
+            .unwrap()
+            .contains(tmp.path().to_str().unwrap())
+    );
     assert_eq!(snap["total_steps"].as_u64(), Some(2));
     assert_eq!(snap["pinned_count"].as_u64(), Some(1));
     assert_eq!(snap["recent_steps_limit"].as_u64(), Some(7));
@@ -834,7 +915,10 @@ fn persistence_disabled_writes_nothing() {
 
     let dir = tmp.path().join("sessions");
     assert!(
-        !dir.exists() || std::fs::read_dir(&dir).map(|d| d.count() == 0).unwrap_or(true),
+        !dir.exists()
+            || std::fs::read_dir(&dir)
+                .map(|d| d.count() == 0)
+                .unwrap_or(true),
         "no files should be written when persistence is disabled"
     );
 }
@@ -868,7 +952,11 @@ fn persistence_writes_atomically_no_tmp_file_left_behind() {
         .filter_map(|e| e.file_name().into_string().ok())
         .collect();
     entries.sort();
-    assert_eq!(entries, vec!["_default.json"], "no .tmp left over: {entries:?}");
+    assert_eq!(
+        entries,
+        vec!["_default.json"],
+        "no .tmp left over: {entries:?}"
+    );
 }
 
 #[test]
@@ -933,7 +1021,11 @@ fn search_does_not_duplicate_branch_steps() {
     let _ = s.process_step(s2);
 
     let hits = s.search_steps("ABCXYZ", 10);
-    assert_eq!(hits.len(), 1, "branch step should appear exactly once, got {hits:?}");
+    assert_eq!(
+        hits.len(),
+        1,
+        "branch step should appear exactly once, got {hits:?}"
+    );
 }
 
 #[test]
@@ -956,7 +1048,12 @@ fn execution_ref_stored_and_searchable() {
     step.execution_ref = Some("task:auth-refactor".into());
     let _ = s.process_step(step);
 
-    let stored = s.history().steps.iter().find(|s| s.step_number == 1).unwrap();
+    let stored = s
+        .history()
+        .steps
+        .iter()
+        .find(|s| s.step_number == 1)
+        .unwrap();
     assert_eq!(stored.execution_ref, Some("task:auth-refactor".into()));
 
     let hits = s.search_steps("auth-refactor", 10);
@@ -968,7 +1065,12 @@ fn execution_ref_stored_and_searchable() {
 fn execution_ref_absent_when_not_set() {
     let mut s = ReasoningServer::new(quiet_config());
     let _ = s.process_step(step_n(1));
-    let stored = s.history().steps.iter().find(|s| s.step_number == 1).unwrap();
+    let stored = s
+        .history()
+        .steps
+        .iter()
+        .find(|s| s.step_number == 1)
+        .unwrap();
     assert_eq!(stored.execution_ref, None);
 }
 
@@ -1060,7 +1162,10 @@ fn set_branch_status_marks_and_validates() {
     assert_eq!(new, "abandoned");
 
     // Unknown id is an error, not a panic.
-    assert!(s.set_branch_status("does-not-exist", "merged", None).is_err());
+    assert!(
+        s.set_branch_status("does-not-exist", "merged", None)
+            .is_err()
+    );
     // Unknown status is rejected.
     assert!(s.set_branch_status(&branch_id, "bogus", None).is_err());
 }
@@ -1074,7 +1179,10 @@ fn branches_summary_response_field_appears_after_branching() {
     b3.branch_from = Some(1);
     b3.branch_name = Some("alt".into());
     let v = parse_response(s.process_step(b3));
-    assert!(v.get("branches_summary").is_some(), "branches_summary should appear once a branch exists");
+    assert!(
+        v.get("branches_summary").is_some(),
+        "branches_summary should appear once a branch exists"
+    );
 }
 
 #[test]
@@ -1271,7 +1379,10 @@ fn confidence_surfaces_in_recent_steps_not_top_level() {
     s1.confidence = Some(0.85);
     let _ = s.process_step(s1);
     let r = parse_response(s.process_step(step_n(2)));
-    assert!(r.get("confidence").is_none(), "no top-level confidence echo");
+    assert!(
+        r.get("confidence").is_none(),
+        "no top-level confidence echo"
+    );
     let recent = r["recent_steps"].as_array().unwrap();
     assert_eq!(recent[0]["confidence"], 0.85);
 }
@@ -1569,7 +1680,10 @@ fn step_numbers_unique_across_sessions_in_project() {
     b.session_id = Some("session-2".into());
     let err = match s.process_step(b) {
         Err(e) => e.text,
-        Ok(ok) => panic!("expected project-wide duplicate rejection, got: {}", ok.text),
+        Ok(ok) => panic!(
+            "expected project-wide duplicate rejection, got: {}",
+            ok.text
+        ),
     };
     assert!(
         err.contains("step_number 1 is already recorded in this project"),
@@ -1582,11 +1696,21 @@ fn step_numbers_unique_across_sessions_in_project() {
 
     // Session-1 keeps its step; session-2 didn't gain one.
     assert_eq!(
-        s.sessions().get(&ns("session-1")).unwrap().history.steps.len(),
+        s.sessions()
+            .get(&ns("session-1"))
+            .unwrap()
+            .history
+            .steps
+            .len(),
         1
     );
     assert_eq!(
-        s.sessions().get(&ns("session-2")).unwrap().history.steps.len(),
+        s.sessions()
+            .get(&ns("session-2"))
+            .unwrap()
+            .history
+            .steps
+            .len(),
         0
     );
 
@@ -1595,7 +1719,12 @@ fn step_numbers_unique_across_sessions_in_project() {
     b2.session_id = Some("session-2".into());
     assert!(s.process_step(b2).is_ok());
     assert_eq!(
-        s.sessions().get(&ns("session-2")).unwrap().history.steps.len(),
+        s.sessions()
+            .get(&ns("session-2"))
+            .unwrap()
+            .history
+            .steps
+            .len(),
         1
     );
 }
@@ -1685,7 +1814,11 @@ fn renumber_on_load_resolves_cross_session_duplicates() {
         .map(|st| st.step_number)
         .collect();
     all_nums.sort();
-    assert_eq!(all_nums, vec![1, 2, 3, 4], "step_numbers must be globally unique 1..N");
+    assert_eq!(
+        all_nums,
+        vec![1, 2, 3, 4],
+        "step_numbers must be globally unique 1..N"
+    );
 
     // session-a came first (earlier created_at) so it gets 1..2.
     assert_eq!(sa.steps[0].step_number, 1);
@@ -1909,7 +2042,12 @@ fn session_indexes_rebuilt_on_switch_back() {
     assert!(!is_error(&result));
 
     assert_eq!(
-        s.sessions().get(&ns("session-a")).unwrap().history.steps.len(),
+        s.sessions()
+            .get(&ns("session-a"))
+            .unwrap()
+            .history
+            .steps
+            .len(),
         4
     );
 }

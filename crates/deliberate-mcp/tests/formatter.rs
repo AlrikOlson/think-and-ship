@@ -4,7 +4,8 @@ use std::collections::BTreeMap;
 
 use deliberate_mcp::formatter::Formatter;
 use deliberate_mcp::types::{
-    Branch, BranchStatus, DeliberateHistory, DeliberateStep, HistoryMetadata, NextAction, StructuredAction,
+    Branch, BranchStatus, DeliberateHistory, DeliberateStep, HistoryMetadata, NextAction,
+    StructuredAction,
 };
 use serde_json::json;
 

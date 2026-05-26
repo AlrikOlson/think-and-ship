@@ -37,8 +37,7 @@ use super::service::DeliberateService;
 /// can't reach across the privacy boundary on their own. This re-exports
 /// it under a stable name without touching the macro.
 impl DeliberateService {
-    pub(crate) fn make_tool_router(
-    ) -> rmcp::handler::server::router::tool::ToolRouter<Self> {
+    pub(crate) fn make_tool_router() -> rmcp::handler::server::router::tool::ToolRouter<Self> {
         Self::tool_router()
     }
 }
@@ -54,7 +53,7 @@ impl DeliberateService {
             destructive_hint = false,
             idempotent_hint = false,
             open_world_hint = false,
-        ),
+        )
     )]
     pub async fn deliberate_record_step(
         &self,
@@ -85,7 +84,7 @@ impl DeliberateService {
             destructive_hint = false,
             idempotent_hint = true,
             open_world_hint = false,
-        ),
+        )
     )]
     pub async fn deliberate_engine_status(
         &self,
@@ -105,7 +104,7 @@ impl DeliberateService {
             destructive_hint = false,
             idempotent_hint = true,
             open_world_hint = false,
-        ),
+        )
     )]
     pub async fn deliberate_export_trace(
         &self,
@@ -136,7 +135,7 @@ impl DeliberateService {
             destructive_hint = false,
             idempotent_hint = true,
             open_world_hint = false,
-        ),
+        )
     )]
     pub async fn deliberate_get_step(
         &self,
@@ -172,7 +171,7 @@ impl DeliberateService {
             destructive_hint = false,
             idempotent_hint = true,
             open_world_hint = false,
-        ),
+        )
     )]
     pub async fn deliberate_search_trace(
         &self,
@@ -214,7 +213,7 @@ impl DeliberateService {
             destructive_hint = false,
             idempotent_hint = true,
             open_world_hint = false,
-        ),
+        )
     )]
     pub async fn deliberate_step_impact(
         &self,
@@ -236,7 +235,7 @@ impl DeliberateService {
             destructive_hint = false,
             idempotent_hint = true,
             open_world_hint = false,
-        ),
+        )
     )]
     pub async fn deliberate_pin_step(
         &self,
@@ -272,7 +271,7 @@ impl DeliberateService {
             destructive_hint = false,
             idempotent_hint = false,
             open_world_hint = false,
-        ),
+        )
     )]
     pub async fn deliberate_revise_estimate(
         &self,
@@ -313,7 +312,7 @@ impl DeliberateService {
             destructive_hint = false,
             idempotent_hint = true,
             open_world_hint = false,
-        ),
+        )
     )]
     pub async fn deliberate_set_branch_status(
         &self,
@@ -354,7 +353,7 @@ impl DeliberateService {
             destructive_hint = false,
             idempotent_hint = true,
             open_world_hint = false,
-        ),
+        )
     )]
     pub async fn deliberate_trace_checkpoint(
         &self,
@@ -374,7 +373,7 @@ impl DeliberateService {
             destructive_hint = true,
             idempotent_hint = true,
             open_world_hint = false,
-        ),
+        )
     )]
     pub async fn deliberate_wipe_trace(
         &self,

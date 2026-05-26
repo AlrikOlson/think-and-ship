@@ -157,11 +157,7 @@ impl ReasoningServer {
             });
         }
 
-        let broadcaster = config
-            .broadcast
-            .path
-            .clone()
-            .and_then(Broadcaster::spawn);
+        let broadcaster = config.broadcast.path.clone().and_then(Broadcaster::spawn);
 
         Self {
             history,
@@ -190,10 +186,7 @@ impl ReasoningServer {
     /// `impact_of` / `checkpoint_snapshot` / `recent_steps_rollup` on it.
     /// No persistence handle, no broadcaster, no disk I/O. The returned
     /// server's mutating methods still work but they only touch memory.
-    pub fn for_analysis(
-        history: DeliberateHistory,
-        branches: HashMap<String, Branch>,
-    ) -> Self {
+    pub fn for_analysis(history: DeliberateHistory, branches: HashMap<String, Branch>) -> Self {
         let config = DeliberateConfig::default();
 
         let mut step_index: HashMap<u32, usize> = HashMap::new();
@@ -308,12 +301,8 @@ impl ReasoningServer {
         out
     }
 
-
-
     // recover_xml_injection, validate_required_fields, validate_confidence
     // moved to `super::validation`.
-
-
 
     /// Persist whatever history is currently loaded — the active session
     /// when one is set, otherwise the default history. Logs but doesn't
@@ -328,7 +317,6 @@ impl ReasoningServer {
         }
     }
 }
-
 
 // Text helpers moved to `crate::util::text`.
 // Recovery helpers moved to `crate::engine::recovery`.

@@ -119,10 +119,7 @@ pub(crate) fn renumber_project_for_uniqueness(
     }
 
     let belongs = |h: &DeliberateHistory| -> bool {
-        h.metadata
-            .as_ref()
-            .and_then(|m| m.project_id.as_deref())
-            == Some(project_id)
+        h.metadata.as_ref().and_then(|m| m.project_id.as_deref()) == Some(project_id)
     };
 
     // Members are ordered by `created_at`. `None` represents the default
@@ -210,12 +207,9 @@ pub(crate) fn renumber_project_for_uniqueness(
     // the same iterator).
     for (member_idx, key) in member_keys.iter().enumerate() {
         match key {
-            None => rewrite_history_step_numbers(
-                history,
-                member_idx,
-                &new_for_position,
-                &new_for_old,
-            ),
+            None => {
+                rewrite_history_step_numbers(history, member_idx, &new_for_position, &new_for_old)
+            }
             Some(sid) => {
                 if let Some(entry) = sessions.get_mut(sid) {
                     rewrite_history_step_numbers(

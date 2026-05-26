@@ -28,9 +28,7 @@ pub struct ExportArgs {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
-#[schemars(
-    description = "Update the projected total step count on the most recent step in place."
-)]
+#[schemars(description = "Update the projected total step count on the most recent step in place.")]
 pub struct ReviseEstimateArgs {
     /// New estimated total step count for the reasoning trace. Must be >= 1.
     pub estimated_total: u32,

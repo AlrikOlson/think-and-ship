@@ -221,11 +221,11 @@ impl ReasoningServer {
             }
         }
 
-        step.duration_ms = Some(u64::try_from(step_start.elapsed().as_millis()).unwrap_or(u64::MAX));
+        step.duration_ms =
+            Some(u64::try_from(step_start.elapsed().as_millis()).unwrap_or(u64::MAX));
         if let Some(meta) = self.history.metadata.as_mut() {
-            meta.total_duration_ms = Some(
-                u64::try_from(self.start_time.elapsed().as_millis()).unwrap_or(u64::MAX),
-            );
+            meta.total_duration_ms =
+                Some(u64::try_from(self.start_time.elapsed().as_millis()).unwrap_or(u64::MAX));
         }
         self.history.updated_at = Some(Utc::now().to_rfc3339());
 
@@ -383,10 +383,8 @@ impl ReasoningServer {
         // without having to call `deliberate_history`. Pinned steps are
         // promoted into this window so load-bearing conclusions don't fall
         // out as the trace lengthens.
-        let recent = self.recent_steps_rollup(
-            self.config.system.recent_steps_limit,
-            Some(step_number),
-        );
+        let recent =
+            self.recent_steps_rollup(self.config.system.recent_steps_limit, Some(step_number));
         if !recent.is_empty() {
             response.insert("recent_steps".into(), Value::Array(recent));
         }

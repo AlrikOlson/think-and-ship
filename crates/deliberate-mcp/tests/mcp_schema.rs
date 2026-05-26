@@ -104,8 +104,7 @@ fn tool_renames_old_names_removed() {
             "old tool name {old:?} should be gone after the 0.2.0 rename, found in: {names:?}"
         );
     }
-    let expected: BTreeSet<String> =
-        EXPECTED_TOOL_NAMES.iter().map(|s| s.to_string()).collect();
+    let expected: BTreeSet<String> = EXPECTED_TOOL_NAMES.iter().map(|s| s.to_string()).collect();
     assert_eq!(
         names, expected,
         "tool list should match the post-rename expected set"
@@ -116,9 +115,9 @@ fn tool_renames_old_names_removed() {
 fn tools_list_carries_annotations() {
     let s = svc();
     for tool in s.list_tools_view() {
-        let ann = tool.annotations.unwrap_or_else(|| {
-            panic!("tool {:?} should carry ToolAnnotations", tool.name)
-        });
+        let ann = tool
+            .annotations
+            .unwrap_or_else(|| panic!("tool {:?} should carry ToolAnnotations", tool.name));
         // Every tool gets a human-readable title.
         assert!(
             ann.title.is_some(),
