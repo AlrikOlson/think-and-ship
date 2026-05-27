@@ -7,6 +7,7 @@ const os = require("os");
 
 const VERSION = require("./package.json").version;
 const BIN_NAME = "think-and-ship";
+const BIN_EXT = os.platform() === "win32" ? ".exe" : "";
 
 function isRealBinary(filePath) {
   try {
@@ -22,17 +23,21 @@ function isRealBinary(filePath) {
 
 function findBinary() {
   const candidates = [
-    path.join(__dirname, "bin", BIN_NAME),
-    path.join(__dirname, "..", BIN_NAME, "bin", BIN_NAME),
+    path.join(__dirname, "bin", BIN_NAME + BIN_EXT),
+    path.join(__dirname, "..", BIN_NAME, "bin", BIN_NAME + BIN_EXT),
   ];
   for (const p of candidates) {
     if (fs.existsSync(p) && isRealBinary(p)) return p;
   }
   try {
-    const which = execSync(`which ${BIN_NAME} 2>/dev/null`, {
-      encoding: "utf8",
-    }).trim();
-    if (which) return which;
+    const lookup =
+      os.platform() === "win32"
+        ? `where ${BIN_NAME}`
+        : `which ${BIN_NAME} 2>/dev/null`;
+    const found = execSync(lookup, { encoding: "utf8" })
+      .trim()
+      .split(/\r?\n/)[0];
+    if (found) return found;
   } catch {}
   return null;
 }

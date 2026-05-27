@@ -28,7 +28,7 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --workspace --all-targets --exclude deliberate-app -- -D warnings
+      - run: cargo clippy --workspace --all-targets --exclude think-and-ship-viewer -- -D warnings
 
   test:
     strategy:
@@ -40,4 +40,4 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --workspace --all-targets --exclude deliberate-app
+      - run: cargo test --workspace --all-targets --exclude think-and-ship-viewer

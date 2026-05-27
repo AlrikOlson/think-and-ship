@@ -11,6 +11,7 @@ env:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - target: x86_64-apple-darwin
@@ -19,6 +20,10 @@ jobs:
             os: macos-latest
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -28,26 +33,68 @@ jobs:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
 
-      - name: Build deliberate-mcp
+      # Cross-compile setup for aarch64 Linux (build host is x86_64).
+      - name: Install cross-compile toolchain (aarch64 linux)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+      # ─── Unified binary: think-and-ship ─────────────────────────
+      # This is the canonical artifact npm/think-and-ship/install.js
+      # downloads and what `cargo install think-and-ship` builds.
+
+      - name: Build think-and-ship
+        run: cargo build --release --target ${{ matrix.target }} -p think-and-ship
+
+      - name: Package think-and-ship (unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf ../../../think-and-ship-${{ github.ref_name }}-${{ matrix.target }}.tar.gz think-and-ship
+
+      - name: Package think-and-ship (windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          cd target\${{ matrix.target }}\release
+          tar czf ..\..\..\think-and-ship-${{ github.ref_name }}-${{ matrix.target }}.tar.gz think-and-ship.exe
+
+      # ─── Deprecation-stub binaries ──────────────────────────────
+      # The v0.1.x npm/cargo packages still exist as deprecation stubs.
+      # Their install.js no longer downloads binaries (it prints a
+      # redirect), but `cargo install deliberate-mcp` continues to
+      # work via crates.io and produces a stub binary that prints the
+      # same redirect. Keep building these so the release artifacts
+      # match what crates.io serves.
+
+      - name: Build deliberate-mcp (stub)
         run: cargo build --release --target ${{ matrix.target }} -p deliberate-mcp
 
-      - name: Build resolute-mcp
+      - name: Build resolute-mcp (stub)
         run: cargo build --release --target ${{ matrix.target }} -p resolute-mcp
 
-      - name: Package deliberate-mcp
+      - name: Package stubs (unix)
+        if: matrix.os != 'windows-latest'
         run: |
           cd target/${{ matrix.target }}/release
           tar czf ../../../deliberate-mcp-${{ github.ref_name }}-${{ matrix.target }}.tar.gz deliberate-mcp
-
-      - name: Package resolute-mcp
-        run: |
-          cd target/${{ matrix.target }}/release
           tar czf ../../../resolute-mcp-${{ github.ref_name }}-${{ matrix.target }}.tar.gz resolute-mcp
+
+      - name: Package stubs (windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          cd target\${{ matrix.target }}\release
+          tar czf ..\..\..\deliberate-mcp-${{ github.ref_name }}-${{ matrix.target }}.tar.gz deliberate-mcp.exe
+          tar czf ..\..\..\resolute-mcp-${{ github.ref_name }}-${{ matrix.target }}.tar.gz resolute-mcp.exe
 
       - uses: actions/upload-artifact@v5
         with:
           name: binaries-${{ matrix.target }}
           path: |
+            think-and-ship-*.tar.gz
             deliberate-mcp-*.tar.gz
             resolute-mcp-*.tar.gz
 
@@ -57,6 +104,7 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v5
       - uses: actions/download-artifact@v5
         with:
           merge-multiple: true
@@ -65,9 +113,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
+            think-and-ship-*.tar.gz
             deliberate-mcp-*.tar.gz
             resolute-mcp-*.tar.gz
-          generate_release_notes: true
+          body_path: docs/RELEASE_NOTES_v0.2.0.md
+          generate_release_notes: false
 
   publish-npm:
     needs: release
@@ -82,16 +132,19 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Publish deliberate-mcp
+      # Publish unified first (it's what new installs target).
+      - name: Publish think-and-ship
+        working-directory: npm/think-and-ship
+        run: npm publish --provenance --access public
+
+      # Then the deprecation stubs (separate registry entries so old
+      # links still resolve; postinstall prints a redirect).
+      - name: Publish deliberate-mcp (stub)
         working-directory: npm/deliberate-mcp
         run: npm publish --provenance --access public
 
-      - name: Publish resolute-mcp
+      - name: Publish resolute-mcp (stub)
         working-directory: npm/resolute-mcp
-        run: npm publish --provenance --access public
-
-      - name: Publish think-and-ship
-        working-directory: npm/think-and-ship
         run: npm publish --provenance --access public
 
   publish-crates:
@@ -102,19 +155,23 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
-      - name: Publish think-and-ship-core
-        run: cargo publish -p think-and-ship-core || echo "Already published, skipping"
+      # Unified crate first.
+      - name: Publish think-and-ship
+        run: cargo publish -p think-and-ship || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish resolute-mcp
+      # Then the deprecation stubs. The 30s sleep gives crates.io's
+      # index a moment to settle between publishes; cargo otherwise
+      # may not find the just-published version when validating deps.
+      - name: Publish resolute-mcp (stub)
         run: |
           sleep 30
           cargo publish -p resolute-mcp || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
-      - name: Publish deliberate-mcp
+      - name: Publish deliberate-mcp (stub)
         run: |
           sleep 30
           cargo publish -p deliberate-mcp || echo "Already published, skipping"

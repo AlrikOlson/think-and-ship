@@ -9,6 +9,7 @@ const https = require("https");
 const REPO = "AlrikOlson/think-and-ship";
 const BIN_NAME = "think-and-ship";
 const BIN_DIR = path.join(__dirname, "bin");
+const BIN_EXT = os.platform() === "win32" ? ".exe" : "";
 
 function getPlatformKey() {
   const platform = os.platform();
@@ -18,6 +19,7 @@ function getPlatformKey() {
   if (platform === "linux" && arch === "x64") return "x86_64-unknown-linux-gnu";
   if (platform === "linux" && arch === "arm64")
     return "aarch64-unknown-linux-gnu";
+  if (platform === "win32" && arch === "x64") return "x86_64-pc-windows-msvc";
   return null;
 }
 
@@ -33,11 +35,12 @@ function tryCargoInstall() {
       `cargo install --root "${path.join(__dirname, ".cargo-install")}" --path "${path.resolve(__dirname, "..", "..", "crates", BIN_NAME)}" 2>&1`,
       { stdio: "inherit" }
     );
-    const built = path.join(__dirname, ".cargo-install", "bin", BIN_NAME);
+    const built = path.join(__dirname, ".cargo-install", "bin", BIN_NAME + BIN_EXT);
     if (fs.existsSync(built)) {
       fs.mkdirSync(BIN_DIR, { recursive: true });
-      fs.copyFileSync(built, path.join(BIN_DIR, BIN_NAME));
-      fs.chmodSync(path.join(BIN_DIR, BIN_NAME), 0o755);
+      const dest = path.join(BIN_DIR, BIN_NAME + BIN_EXT);
+      fs.copyFileSync(built, dest);
+      if (BIN_EXT === "") fs.chmodSync(dest, 0o755);
       return true;
     }
   } catch (e) {
@@ -99,9 +102,9 @@ async function tryGithubRelease() {
     fs.writeFileSync(tmpTar, tarball);
     execSync(`tar xzf "${tmpTar}" -C "${BIN_DIR}"`, { stdio: "ignore" });
     fs.unlinkSync(tmpTar);
-    const binPath = path.join(BIN_DIR, BIN_NAME);
+    const binPath = path.join(BIN_DIR, BIN_NAME + BIN_EXT);
     if (fs.existsSync(binPath)) {
-      fs.chmodSync(binPath, 0o755);
+      if (BIN_EXT === "") fs.chmodSync(binPath, 0o755);
       return true;
     }
   } catch (e) {
@@ -124,7 +127,7 @@ function isRealBinary(filePath) {
 }
 
 async function main() {
-  const binPath = path.join(BIN_DIR, BIN_NAME);
+  const binPath = path.join(BIN_DIR, BIN_NAME + BIN_EXT);
   if (fs.existsSync(binPath) && isRealBinary(binPath)) {
     console.log(`${BIN_NAME}: binary already exists, skipping install`);
     return;
