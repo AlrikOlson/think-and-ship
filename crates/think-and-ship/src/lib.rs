@@ -8,7 +8,7 @@
 //! See `docs/ARCHITECTURE.md` at the repo root for the full design.
 
 pub mod cli;
-pub mod engine;
+pub mod infra;
 pub mod env_compat;
 pub mod mcp;
 pub mod migrate;

@@ -3,7 +3,7 @@
 //! Wire format: one newline-delimited JSON object per mutation, with a
 //! `family: "think"` discriminator flattened on top of the typed
 //! [`BroadcastFrame`] payload. The actual socket and fan-out tasks live
-//! in [`crate::engine::broadcast`]; this module is the typed view that
+//! in [`crate::infra::broadcast`]; this module is the typed view that
 //! the reasoning engine emits through.
 //!
 //! Emission is never allowed to fail the calling MCP tool path:
@@ -19,7 +19,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
-use crate::engine::{Broadcaster as EngineBroadcaster, Family};
+use crate::infra::{Broadcaster as EngineBroadcaster, Family};
 use crate::think::domain::{BranchStatus, DeliberateStep};
 
 /// One mutation event. Encoded as a single JSON object with an externally

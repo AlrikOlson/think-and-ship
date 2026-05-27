@@ -3,7 +3,7 @@
 //! The body of this module is ported from `resolute-mcp` v0.1 with
 //! peer-module references rewritten to `crate::ship::*`. Tool wire wiring
 //! lives in the `mcp` submodule; broadcast routes through the shared
-//! `crate::engine::Broadcaster` with `Family::Ship`.
+//! `crate::infra::Broadcaster` with `Family::Ship`.
 
 pub mod broadcast;
 pub mod domain;

@@ -52,7 +52,9 @@ pub struct FeaturesConfig {
     ///
     /// Resolved in this order at startup:
     ///   1. `THINK_AND_SHIP_DEFAULT_SESSION_ID` env var (explicit override)
-    ///   2. `THINK_AND_SHIP_AUTO_SESSION=true` → generated `auto-YYYYMMDD-HHMMSS-XXXX`
+    ///   2. `THINK_AND_SHIP_AUTO_SESSION=true` → the resolved `project_id`
+    ///      (`<basename>-<6hex>`; stable across server spawns so a fresh
+    ///      conversation sees its own past steps)
     ///   3. None (caller must pass `session_id` explicitly to use a session)
     ///
     /// Setting either env implies `enable_sessions = true`.
@@ -299,7 +301,7 @@ pub const PROJECT_SEP: &str = "__";
 /// the shared engine so all tool families produce the same identity for
 /// the same working directory.
 pub fn resolve_project_id() -> String {
-    crate::engine::resolve_project_id(None)
+    crate::infra::resolve_project_id(None)
 }
 
 /// Rewrite a caller-supplied session id so it lands inside the current

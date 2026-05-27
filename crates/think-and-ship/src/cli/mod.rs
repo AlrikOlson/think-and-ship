@@ -4,7 +4,7 @@ use anyhow::{Result, bail};
 use rmcp::{ServiceExt, transport::io::stdio};
 use tracing_subscriber::EnvFilter;
 
-use crate::engine::{Broadcaster as EngineBroadcaster, PersistenceConfig as InfraPersistenceConfig};
+use crate::infra::{Broadcaster as EngineBroadcaster, PersistenceConfig as InfraPersistenceConfig};
 use crate::env_compat::translate_legacy_env_vars;
 use crate::mcp::UnifiedService;
 use crate::migrate::migrate_v0_1_data;
@@ -82,7 +82,7 @@ async fn run_server() -> Result<()> {
     };
     let think_service = ThinkService::new(think_engine);
 
-    let project_id = crate::engine::resolve_project_id(None);
+    let project_id = crate::infra::resolve_project_id(None);
     let ship_persist_cfg = ShipPersistenceConfig::from_env();
     let ship_persistence = ShipPersistence::new(&ship_persist_cfg);
     let mut ship_engine = ShipEngine::new(project_id.clone()).with_persistence(ship_persistence);

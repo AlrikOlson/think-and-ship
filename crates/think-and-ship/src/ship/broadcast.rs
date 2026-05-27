@@ -3,7 +3,7 @@
 //! Wire format: one newline-delimited JSON object per mutation, with a
 //! `family: "ship"` discriminator flattened on top of the typed
 //! [`BroadcastFrame`] payload. The actual socket and fan-out tasks live
-//! in [`crate::engine::broadcast`]; this module is the typed view the
+//! in [`crate::infra::broadcast`]; this module is the typed view the
 //! execution engine emits through.
 
 use std::path::PathBuf;
@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
-use crate::engine::{Broadcaster as EngineBroadcaster, Family};
+use crate::infra::{Broadcaster as EngineBroadcaster, Family};
 use crate::ship::domain::action::Action;
 use crate::ship::domain::check::Check;
 use crate::ship::domain::objective::Objective;

@@ -29,7 +29,7 @@ When to call which tool:
   - Closing a task with what was produced      → ship_complete
   - Marking a task blocked                     → ship_block
   - Recording a quality gate result            → ship_check
-  - Shipping the completed objective           → ship_ship
+  - Shipping the completed objective           → ship_finalize
   - Getting current state after context loss   → ship_status
   - Exporting the full execution trace         → ship_export
   - Wiping everything (destructive)            → ship_reset
@@ -71,8 +71,17 @@ impl ShipService {
 
     fn deprecated_alias_of(canonical: &rmcp::model::Tool) -> Option<rmcp::model::Tool> {
         let suffix = canonical.name.strip_prefix(TOOL_PREFIX)?;
+        // Most tools follow the simple `ship_X` → `resolute_X` pattern.
+        // `ship_finalize` is the one rename whose legacy name doesn't
+        // match that pattern (it was historically `resolute_ship` /
+        // `ship_ship`), so its alias is named explicitly.
+        let legacy_name = if canonical.name == "ship_finalize" {
+            "resolute_ship".to_string()
+        } else {
+            format!("{DEPRECATED_PREFIX}{suffix}")
+        };
         let mut alias = canonical.clone();
-        alias.name = Cow::Owned(format!("{DEPRECATED_PREFIX}{suffix}"));
+        alias.name = Cow::Owned(legacy_name);
         let mut meta = canonical.meta.clone().map(|m| m.0).unwrap_or_default();
         meta.insert(
             "deprecation_warning".to_string(),
@@ -80,6 +89,17 @@ impl ShipService {
         );
         alias.meta = Some(Meta(meta));
         Some(alias)
+    }
+
+    /// Map a deprecated tool name to its canonical name. Returns `None`
+    /// if the input is already canonical (or doesn't match any alias).
+    fn canonical_of(name: &str) -> Option<String> {
+        if name == "resolute_ship" || name == "ship_ship" {
+            return Some("ship_finalize".to_string());
+        }
+        // General resolute_X → ship_X for everything else.
+        name.strip_prefix(DEPRECATED_PREFIX)
+            .map(|s| format!("{TOOL_PREFIX}{s}"))
     }
 
     pub(super) fn poisoned() -> ErrorData {
@@ -127,8 +147,8 @@ impl ServerHandler for ShipService {
         mut request: CallToolRequestParams,
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
-        if let Some(suffix) = request.name.strip_prefix(DEPRECATED_PREFIX) {
-            request.name = Cow::Owned(format!("{TOOL_PREFIX}{suffix}"));
+        if let Some(canonical) = Self::canonical_of(&request.name) {
+            request.name = Cow::Owned(canonical);
         }
         let tcc = ToolCallContext::new(self, request, context);
         self.tool_router.call(tcc).await

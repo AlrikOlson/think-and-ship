@@ -309,8 +309,8 @@ New (canonical) names, all prefixed `THINK_AND_SHIP_`:
 | `THINK_AND_SHIP_DATA_DIR` | Override the XDG data root | `~/.local/share/think-and-ship/` |
 | `THINK_AND_SHIP_BROADCAST_PATH` | Unix socket path for live frames | `~/.local/share/think-and-ship/broadcast.sock` |
 | `THINK_AND_SHIP_PROJECT_NAME` | Override project identity | derived from cwd |
-| `THINK_AND_SHIP_AUTO_SESSION` | Generate `auto-YYYYMMDD-HHMMSS-XXXX` session ids per server spawn | `false` |
-| `THINK_AND_SHIP_DEFAULT_SESSION_ID` | Explicit session id override | unset |
+| `THINK_AND_SHIP_AUTO_SESSION` | Enable the default-session-id fallback (uses the resolved `project_id`, stable across server spawns — no timestamp, no random suffix) | `false` |
+| `THINK_AND_SHIP_DEFAULT_SESSION_ID` | Explicit session id override (wins over auto) | unset |
 
 Old (deprecated, accepted for one release with a log warning):
 

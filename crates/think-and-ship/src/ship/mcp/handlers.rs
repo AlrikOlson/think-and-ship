@@ -320,7 +320,7 @@ impl ShipService {
 
     #[tool(
         name = "ship_check",
-        description = "Record a quality gate result — a test run, lint pass, type check, build, code review, or manual verification.\n\nInputs: task_id (optional — defaults to active task), type ('test'|'lint'|'typecheck'|'build'|'review'|'manual'), name (required — e.g. 'cargo test', 'npm run lint'), passed (bool, required), details (string — output summary or failure reason), required (bool, default true — whether this gate should block shipping).\n\nReturns: the recorded check.\n\nPitfalls: checks with required=true and passed=false will generate a warning when ship_ship is called.",
+        description = "Record a quality gate result — a test run, lint pass, type check, build, code review, or manual verification.\n\nInputs: task_id (optional — defaults to active task), type ('test'|'lint'|'typecheck'|'build'|'review'|'manual'), name (required — e.g. 'cargo test', 'npm run lint'), passed (bool, required), details (string — output summary or failure reason), required (bool, default true — whether this gate should block shipping).\n\nReturns: the recorded check.\n\nPitfalls: checks with required=true and passed=false will generate a warning when ship_finalize is called.",
         annotations(
             title = "Record check",
             read_only_hint = false,
@@ -348,7 +348,7 @@ impl ShipService {
     }
 
     #[tool(
-        name = "ship_ship",
+        name = "ship_finalize",
         description = "Mark the objective as completed and record final artifacts (commits, PRs, deployments). Reviews all checks and warns about any required checks that failed or are missing.\n\nInputs: artifacts (array of {type, ref, description}), summary (optional string).\n\nReturns: ship report — objective status, task completion stats, check summary, warnings about failed/missing required checks.\n\nPitfalls: does NOT block on failed checks — it warns. The trace records whether the agent shipped with failures.",
         annotations(
             title = "Ship objective",
@@ -358,7 +358,7 @@ impl ShipService {
             open_world_hint = false,
         )
     )]
-    pub async fn ship_ship(
+    pub async fn ship_finalize(
         &self,
         Parameters(args): Parameters<ShipArgs>,
     ) -> Result<CallToolResult, ErrorData> {

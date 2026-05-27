@@ -39,7 +39,7 @@ impl Persistence {
     pub fn new(cfg: &PersistenceConfig) -> Self {
         // Partition under `think/` so the ship family writes to its own
         // sibling subdirectory and the two never share a `<project>.json`
-        // path. Mirrors the layout used by `crate::engine::Persistence`.
+        // path. Mirrors the layout used by `crate::infra::Persistence`.
         let sessions_dir = cfg.data_dir.join("think").join("sessions");
         if cfg.enabled {
             if let Err(e) = fs::create_dir_all(&sessions_dir) {
