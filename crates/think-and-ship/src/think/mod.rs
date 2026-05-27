@@ -13,6 +13,9 @@ pub mod constants;
 pub mod domain;
 pub mod engine;
 pub mod formatter;
+pub mod mcp;
 pub mod output_schemas;
 pub mod persistence;
 pub mod util;
+
+pub use mcp::service::ThinkService;

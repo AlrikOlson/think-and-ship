@@ -55,16 +55,16 @@ use crate::think::domain::DeliberateStep;
 /// text).
 pub fn output_schema_for(tool_name: &str) -> Option<Arc<JsonObject>> {
     let value: Value = match tool_name {
-        "deliberate_record_step" => schema_for!(RecordStepOutput).to_value(),
-        "deliberate_engine_status" => schema_for!(EngineStatusOutput).to_value(),
-        "deliberate_get_step" => schema_for!(DeliberateStep).to_value(),
-        "deliberate_search_trace" => schema_for!(SearchTraceOutput).to_value(),
-        "deliberate_step_impact" => schema_for!(StepImpactOutput).to_value(),
-        "deliberate_pin_step" => schema_for!(PinStepOutput).to_value(),
-        "deliberate_revise_estimate" => schema_for!(ReviseEstimateOutput).to_value(),
-        "deliberate_set_branch_status" => schema_for!(SetBranchStatusOutput).to_value(),
-        "deliberate_trace_checkpoint" => schema_for!(TraceCheckpointOutput).to_value(),
-        "deliberate_wipe_trace" => schema_for!(WipeTraceOutput).to_value(),
+        "think_record_step" => schema_for!(RecordStepOutput).to_value(),
+        "think_engine_status" => schema_for!(EngineStatusOutput).to_value(),
+        "think_get_step" => schema_for!(DeliberateStep).to_value(),
+        "think_search_trace" => schema_for!(SearchTraceOutput).to_value(),
+        "think_step_impact" => schema_for!(StepImpactOutput).to_value(),
+        "think_pin_step" => schema_for!(PinStepOutput).to_value(),
+        "think_revise_estimate" => schema_for!(ReviseEstimateOutput).to_value(),
+        "think_set_branch_status" => schema_for!(SetBranchStatusOutput).to_value(),
+        "think_trace_checkpoint" => schema_for!(TraceCheckpointOutput).to_value(),
+        "think_wipe_trace" => schema_for!(WipeTraceOutput).to_value(),
         _ => return None,
     };
     match value {
