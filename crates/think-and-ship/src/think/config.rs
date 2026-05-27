@@ -51,8 +51,8 @@ pub struct FeaturesConfig {
     /// remember to pass a `session_id` on every call.
     ///
     /// Resolved in this order at startup:
-    ///   1. `DELIBERATE_DEFAULT_SESSION_ID` env var (explicit override)
-    ///   2. `DELIBERATE_AUTO_SESSION=true` → generated `auto-YYYYMMDD-HHMMSS-XXXX`
+    ///   1. `THINK_AND_SHIP_DEFAULT_SESSION_ID` env var (explicit override)
+    ///   2. `THINK_AND_SHIP_AUTO_SESSION=true` → generated `auto-YYYYMMDD-HHMMSS-XXXX`
     ///   3. None (caller must pass `session_id` explicitly to use a session)
     ///
     /// Setting either env implies `enable_sessions = true`.
@@ -82,7 +82,7 @@ pub struct PersistenceConfig {
     /// startup and written after every mutation. Default false (in-memory only).
     pub enabled: bool,
     /// Directory where session files live. Defaults to
-    /// `${XDG_DATA_HOME:-$HOME/.local/share}/deliberate-mcp`.
+    /// `${XDG_DATA_HOME:-$HOME/.local/share}/think-and-ship`.
     pub data_dir: PathBuf,
 }
 
@@ -144,14 +144,14 @@ impl Default for DeliberateConfig {
 /// Resolve the default data dir following the XDG Base Directory spec, with
 /// a sensible fallback for systems that don't set `XDG_DATA_HOME`.
 fn default_data_dir() -> PathBuf {
-    if let Ok(custom) = env::var("DELIBERATE_DATA_DIR") {
+    if let Ok(custom) = env::var("THINK_AND_SHIP_DATA_DIR") {
         if !custom.trim().is_empty() {
             return PathBuf::from(custom);
         }
     }
     if let Ok(xdg) = env::var("XDG_DATA_HOME") {
         if !xdg.trim().is_empty() {
-            return PathBuf::from(xdg).join("deliberate-mcp");
+            return PathBuf::from(xdg).join("think-and-ship");
         }
     }
     if let Ok(home) = env::var("HOME") {
@@ -159,12 +159,12 @@ fn default_data_dir() -> PathBuf {
             return PathBuf::from(home)
                 .join(".local")
                 .join("share")
-                .join("deliberate-mcp");
+                .join("think-and-ship");
         }
     }
     // Last-resort fallback for environments without HOME (e.g. some CI). The
     // engine still works in memory-only mode; persistence just won't load.
-    env::temp_dir().join("deliberate-mcp")
+    env::temp_dir().join("think-and-ship")
 }
 
 /// Parse a non-empty env value as an integer `>= min`, returning `None` otherwise.
@@ -184,7 +184,7 @@ fn parse_int_env<T: std::str::FromStr + PartialOrd + Copy>(
 pub fn load_config() -> DeliberateConfig {
     let mut config = DeliberateConfig::default();
 
-    if env::var("DELIBERATE_STRICT_MODE").as_deref() == Ok("true") {
+    if env::var("THINK_AND_SHIP_STRICT_MODE").as_deref() == Ok("true") {
         config.validation.strict_mode = true;
         config.validation.require_thought_prefix = true;
         config.validation.require_rationale_prefix = true;
@@ -195,50 +195,50 @@ pub fn load_config() -> DeliberateConfig {
         config.system.max_history_size = v;
     }
 
-    if let Ok(raw) = env::var("DELIBERATE_OUTPUT_FORMAT") {
+    if let Ok(raw) = env::var("THINK_AND_SHIP_OUTPUT_FORMAT") {
         match OutputFormat::parse(&raw) {
             Some(fmt) => config.display.output_format = fmt,
             None => {
                 eprintln!(
-                    "⚠️ Invalid DELIBERATE_OUTPUT_FORMAT '{raw}', using default 'console'. Valid options: console, json, markdown"
+                    "⚠️ Invalid THINK_AND_SHIP_OUTPUT_FORMAT '{raw}', using default 'console'. Valid options: console, json, markdown"
                 );
             }
         }
     }
 
-    if env::var("DELIBERATE_NO_COLOR").as_deref() == Ok("true") {
+    if env::var("THINK_AND_SHIP_NO_COLOR").as_deref() == Ok("true") {
         config.display.color_output = false;
     }
 
-    if let Some(v) = parse_int_env::<u64>(env::var("DELIBERATE_SESSION_TIMEOUT").ok().as_deref(), 1)
+    if let Some(v) = parse_int_env::<u64>(env::var("THINK_AND_SHIP_SESSION_TIMEOUT").ok().as_deref(), 1)
     {
         config.system.session_timeout = v;
     }
 
     if let Some(v) =
-        parse_int_env::<u32>(env::var("DELIBERATE_MAX_BRANCH_DEPTH").ok().as_deref(), 1)
+        parse_int_env::<u32>(env::var("THINK_AND_SHIP_MAX_BRANCH_DEPTH").ok().as_deref(), 1)
     {
         config.system.max_branch_depth = v;
     }
 
-    if env::var("DELIBERATE_ENABLE_SESSIONS").as_deref() == Ok("true") {
+    if env::var("THINK_AND_SHIP_ENABLE_SESSIONS").as_deref() == Ok("true") {
         config.features.enable_sessions = true;
     }
 
     if let Some(v) =
-        parse_int_env::<usize>(env::var("DELIBERATE_RECENT_STEPS_LIMIT").ok().as_deref(), 1)
+        parse_int_env::<usize>(env::var("THINK_AND_SHIP_RECENT_STEPS_LIMIT").ok().as_deref(), 1)
     {
         config.system.recent_steps_limit = v;
     }
 
-    if env::var("DELIBERATE_PERSIST").as_deref() == Ok("true") {
+    if env::var("THINK_AND_SHIP_PERSIST").as_deref() == Ok("true") {
         config.persistence.enabled = true;
     }
-    // `default_data_dir()` already honors DELIBERATE_DATA_DIR — re-evaluate here so
+    // `default_data_dir()` already honors THINK_AND_SHIP_DATA_DIR — re-evaluate here so
     // a test that sets the env after Default::default() runs picks it up.
     config.persistence.data_dir = default_data_dir();
 
-    if let Ok(raw) = env::var("DELIBERATE_BROADCAST_PATH") {
+    if let Ok(raw) = env::var("THINK_AND_SHIP_BROADCAST_PATH") {
         let trimmed = raw.trim();
         if !trimmed.is_empty() {
             config.broadcast.path = Some(PathBuf::from(trimmed));
@@ -246,24 +246,24 @@ pub fn load_config() -> DeliberateConfig {
     }
 
     // Project-derived default session is now always-on whenever sessions
-    // are enabled. The previous opt-in (`DELIBERATE_AUTO_SESSION=true`)
+    // are enabled. The previous opt-in (`THINK_AND_SHIP_AUTO_SESSION=true`)
     // produced silent data corruption: agents in projects without that
     // env wrote to a shared `_default.json` regardless of cwd. We keep
     // the env var accepted for back-compat (still enables sessions) but
     // no longer require it for the default to apply.
-    if env::var("DELIBERATE_AUTO_SESSION").as_deref() == Ok("true") {
+    if env::var("THINK_AND_SHIP_AUTO_SESSION").as_deref() == Ok("true") {
         config.features.enable_sessions = true;
     }
     if config.features.enable_sessions && config.features.default_session_id.is_none() {
         config.features.default_session_id = Some(generate_auto_session_id());
     }
-    if let Ok(raw) = env::var("DELIBERATE_DEFAULT_SESSION_ID") {
+    if let Ok(raw) = env::var("THINK_AND_SHIP_DEFAULT_SESSION_ID") {
         let trimmed = raw.trim();
         if trimmed.is_empty() {
             // Leave whatever auto-session produced in place.
         } else if !is_safe_session_id(trimmed) {
             eprintln!(
-                "⚠️ Ignoring DELIBERATE_DEFAULT_SESSION_ID={trimmed:?} — must match [A-Za-z0-9_.-], ≤128 chars"
+                "⚠️ Ignoring THINK_AND_SHIP_DEFAULT_SESSION_ID={trimmed:?} — must match [A-Za-z0-9_.-], ≤128 chars"
             );
         } else {
             config.features.enable_sessions = true;
@@ -276,7 +276,7 @@ pub fn load_config() -> DeliberateConfig {
 
 /// Generate the default session_id at server startup. Format is just
 /// the resolved project identifier — `<basename>-<6hex>` from the cwd
-/// path, or a sanitized `DELIBERATE_PROJECT_NAME` override. NO timestamp,
+/// path, or a sanitized `THINK_AND_SHIP_PROJECT_NAME` override. NO timestamp,
 /// NO random suffix.
 ///
 /// The original design appended a timestamp+random suffix so each
