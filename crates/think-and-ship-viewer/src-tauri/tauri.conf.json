@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "deliberate",
-  "version": "0.1.0",
-  "identifier": "dev.deliberate.app",
+  "productName": "think-and-ship",
+  "version": "0.2.0",
+  "identifier": "dev.thinkandship.viewer",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "deliberate",
+        "title": "think-and-ship",
         "width": 1280,
         "height": 800,
         "minWidth": 800,

@@ -1,6 +1,9 @@
-# deliberate-app
+# think-and-ship-viewer
 
-Live viewer for the `deliberate-mcp` reasoning trace.
+Live desktop viewer for the unified think + ship trace surface emitted
+by the `think-and-ship` server. Connects to a single Unix broadcast
+socket and dispatches `family: "think"` / `family: "ship"` frames into
+the in-app timeline.
 
 A Tauri 2 desktop window with three views — Trace (vertical git-log-style
 timeline), Graph (dagre-laid-out dependency DAG), Checkpoint (the five

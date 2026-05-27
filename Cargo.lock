@@ -758,25 +758,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "deliberate-app"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "deliberate-mcp",
- "notify",
- "notify-debouncer-full",
- "resolute-mcp",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-opener",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "deliberate-mcp"
 version = "0.3.2"
 dependencies = [
@@ -3986,6 +3967,25 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+]
+
+[[package]]
+name = "think-and-ship-viewer"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "deliberate-mcp",
+ "notify",
+ "notify-debouncer-full",
+ "resolute-mcp",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-opener",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

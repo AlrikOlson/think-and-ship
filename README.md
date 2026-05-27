@@ -198,7 +198,7 @@ RESOLUTE_BROADCAST_PATH=/tmp/resolute.sock
 
 ```sh
 cargo test --workspace
-cargo clippy --workspace --all-targets --exclude deliberate-app -- -D warnings
+cargo clippy --workspace --all-targets --exclude think-and-ship-viewer -- -D warnings
 cargo fmt --all --check
 ```
 

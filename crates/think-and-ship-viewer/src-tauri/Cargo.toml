@@ -1,22 +1,27 @@
 [package]
-name = "deliberate-app"
-version = "0.1.0"
+name = "think-and-ship-viewer"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.88"
-description = "Live viewer for deliberate-mcp reasoning traces (Tauri 2 desktop app)"
+description = "Live desktop viewer for think-and-ship reasoning + execution traces (Tauri 2)"
 license = "MIT"
 publish = false
 
 [[bin]]
-name = "deliberate-app"
+name = "think-and-ship-viewer"
 path = "src/main.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-deliberate-mcp = { path = "../.." }
-resolute-mcp = { path = "../../../resolute-mcp" }
+# The viewer still consumes the *library* types from deliberate-mcp and
+# resolute-mcp for the wire-format BroadcastFrame / DeliberateHistory.
+# Those library types are preserved in the deprecated stubs through
+# v0.2.x. v0.3.0 should switch to think-and-ship's domain re-exports
+# and drop these path deps.
+deliberate-mcp = { path = "../../deliberate-mcp" }
+resolute-mcp = { path = "../../resolute-mcp" }
 
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"

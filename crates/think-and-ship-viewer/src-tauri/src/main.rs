@@ -1,4 +1,5 @@
-//! `deliberate-app` — live viewer for the `deliberate-mcp` reasoning trace.
+//! `think-and-ship-viewer` — live desktop viewer for the unified
+//! think + ship trace surface emitted by the `think-and-ship` server.
 //!
 //! Architecture:
 //!
@@ -31,7 +32,7 @@ fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("deliberate_app=info,warn")),
+                .unwrap_or_else(|_| EnvFilter::new("think_and_ship_viewer=info,warn")),
         )
         .with_writer(std::io::stderr)
         .with_ansi(false)
@@ -63,5 +64,5 @@ fn main() {
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running deliberate-app");
+        .expect("error while running think-and-ship-viewer");
 }
