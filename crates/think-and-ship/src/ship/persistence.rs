@@ -59,7 +59,10 @@ pub struct Persistence {
 
 impl Persistence {
     pub fn new(cfg: &PersistenceConfig) -> Self {
-        let sessions_dir = cfg.data_dir.join("sessions");
+        // Partition under `ship/` so the think family writes to its own
+        // sibling subdirectory and the two never share a `<project>.json`
+        // path. Mirrors the layout used by `crate::engine::Persistence`.
+        let sessions_dir = cfg.data_dir.join("ship").join("sessions");
         if cfg.enabled
             && let Err(e) = fs::create_dir_all(&sessions_dir)
         {

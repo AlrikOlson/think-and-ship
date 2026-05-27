@@ -913,7 +913,7 @@ fn persistence_disabled_writes_nothing() {
     let mut s = ReasoningServer::new(cfg);
     let _ = s.process_step(step_n(1));
 
-    let dir = tmp.path().join("sessions");
+    let dir = tmp.path().join("think").join("sessions");
     assert!(
         !dir.exists()
             || std::fs::read_dir(&dir)
@@ -945,7 +945,7 @@ fn persistence_writes_atomically_no_tmp_file_left_behind() {
     let mut s = ReasoningServer::new(persisting_config(&tmp));
     let _ = s.process_step(step_n(1));
 
-    let dir = tmp.path().join("sessions");
+    let dir = tmp.path().join("think").join("sessions");
     let mut entries: Vec<String> = std::fs::read_dir(&dir)
         .unwrap()
         .filter_map(|e| e.ok())
@@ -965,7 +965,7 @@ fn persistence_clear_removes_disk_files() {
     let mut s = ReasoningServer::new(persisting_config(&tmp));
     let _ = s.process_step(step_n(1));
     s.clear_history();
-    let dir = tmp.path().join("sessions");
+    let dir = tmp.path().join("think").join("sessions");
     let count = std::fs::read_dir(&dir).map(|d| d.count()).unwrap_or(0);
     assert_eq!(count, 0, "clear_history should wipe disk");
 }
@@ -984,9 +984,11 @@ fn persistence_rejects_unsafe_session_ids() {
     s1.session_id = Some("../escape".into());
     let _ = s.process_step(s1);
 
-    // Look for any file outside `sessions/` — there must be none.
-    let sessions_dir = tmp.path().join("sessions");
-    for entry in std::fs::read_dir(tmp.path()).unwrap().flatten() {
+    // Look for any file outside `think/sessions/` — there must be none.
+    // Walk into the `think/` partition and assert only `sessions/` lives there.
+    let think_partition = tmp.path().join("think");
+    let sessions_dir = think_partition.join("sessions");
+    for entry in std::fs::read_dir(&think_partition).unwrap().flatten() {
         let p = entry.path();
         assert!(
             p == sessions_dir,

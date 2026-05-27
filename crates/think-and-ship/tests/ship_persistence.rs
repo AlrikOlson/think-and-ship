@@ -72,7 +72,7 @@ fn persistence_disabled_writes_nothing() {
     let mut engine = ShipEngine::new("test".into()).with_persistence(persistence.clone());
     engine.set_objective("Goal".into(), vec![], vec![], String::new());
 
-    let sessions_dir = tmp.path().join("sessions");
+    let sessions_dir = tmp.path().join("ship").join("sessions");
     assert!(
         !sessions_dir.exists()
             || std::fs::read_dir(&sessions_dir)
@@ -92,6 +92,7 @@ fn reset_removes_disk_file() {
 
     let path = _tmp
         .path()
+        .join("ship")
         .join("sessions")
         .join(format!("{project_id}.json"));
     assert!(path.exists(), "file should exist after set_objective");
