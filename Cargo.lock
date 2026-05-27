@@ -3975,6 +3975,11 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
