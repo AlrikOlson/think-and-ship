@@ -1,7 +1,8 @@
 {
   "name": "deliberate-mcp",
-  "version": "0.3.1",
-  "description": "Structured, branching, revisable reasoning traces over MCP — the 'thinking' half of think-and-ship",
+  "version": "0.3.2",
+  "description": "DEPRECATED: merged into `think-and-ship`. `npm i -g think-and-ship` instead. The old `deliberate_*` tool names remain as deprecated aliases through v0.2.x.",
+  "deprecated": "Merged into think-and-ship. Run: npm i -g think-and-ship",
   "license": "MIT",
   "repository": {
     "type": "git",

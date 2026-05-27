@@ -1,7 +1,8 @@
 {
   "name": "resolute-mcp",
-  "version": "0.1.1",
-  "description": "Structured execution tracking for autonomous AI development — the 'doing' half of think-and-ship",
+  "version": "0.1.2",
+  "description": "DEPRECATED: merged into `think-and-ship`. `npm i -g think-and-ship` instead. The old `resolute_*` tool names remain as deprecated aliases through v0.2.x.",
+  "deprecated": "Merged into think-and-ship. Run: npm i -g think-and-ship",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -20,10 +21,8 @@
   ],
   "keywords": [
     "mcp",
-    "sdlc",
-    "ai",
-    "agent",
-    "execution",
-    "tracking"
+    "deprecated",
+    "merged",
+    "think-and-ship"
   ]
 }

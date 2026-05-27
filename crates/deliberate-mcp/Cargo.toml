@@ -1,9 +1,9 @@
 [package]
 name = "deliberate-mcp"
-version = "0.3.0"
+version = "0.3.2"
 edition = "2024"
 rust-version = "1.88"
-description = "MCP server for structured, branching, revisable reasoning — record deliberation traces step by step"
+description = "DEPRECATED: merged into the unified `think-and-ship` crate as of v0.2.0. The binary now prints a redirect and exits non-zero; library types are preserved for the migration window. Install `think-and-ship` instead."
 license = "MIT"
 repository = "https://github.com/AlrikOlson/think-and-ship"
 homepage = "https://github.com/AlrikOlson/think-and-ship"
@@ -16,7 +16,6 @@ name = "deliberate-mcp"
 path = "src/main.rs"
 
 [dependencies]
-think-and-ship-core = { version = "0.1.0", path = "../think-and-ship-core" }
 rmcp = { version = "1.7", features = ["server", "transport-io", "macros", "schemars"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "io-util", "signal", "time", "net", "sync"] }
 serde = { version = "1", features = ["derive"] }

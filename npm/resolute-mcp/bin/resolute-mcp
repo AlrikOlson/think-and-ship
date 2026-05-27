@@ -1,5 +1,16 @@
 #!/bin/sh
-# Stub launcher — replaced by the real binary during postinstall.
-# If this runs, the binary wasn't installed.
-echo "resolute-mcp: binary not installed. Run 'npm rebuild resolute-mcp' or install Rust and run 'cargo install --path crates/resolute-mcp'" >&2
+# resolute-mcp has merged into the unified `think-and-ship` server as of v0.2.0.
+cat <<'MSG' >&2
+resolute-mcp has merged into the `think-and-ship` server.
+
+  Install:        npm i -g think-and-ship
+                  cargo install think-and-ship
+
+  MCP config:     command = `think-and-ship`, args = ["serve"]
+
+Tool names: prefer `ship_*` (canonical). The old `resolute_*` names
+remain wired as deprecated aliases through v0.2.x.
+
+See https://github.com/AlrikOlson/think-and-ship for details.
+MSG
 exit 1

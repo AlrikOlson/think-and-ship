@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/think-and-ship", "crates/think-and-ship-core", "crates/resolute-mcp", "crates/deliberate-mcp", "crates/deliberate-mcp/app/src-tauri"]
+members = ["crates/think-and-ship", "crates/resolute-mcp", "crates/deliberate-mcp", "crates/deliberate-mcp/app/src-tauri"]
 resolver = "2"
 
 [workspace.package]
@@ -16,4 +16,3 @@ tokio = { version = "1", features = ["full"] }
 chrono = { version = "0.4", features = ["serde"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-think-and-ship-core = { version = "0.1.0", path = "crates/think-and-ship-core" }

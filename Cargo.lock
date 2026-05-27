@@ -778,7 +778,7 @@ dependencies = [
 
 [[package]]
 name = "deliberate-mcp"
-version = "0.3.0"
+version = "0.3.2"
 dependencies = [
  "anyhow",
  "chrono",
@@ -789,7 +789,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "think-and-ship-core",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -3068,7 +3067,7 @@ dependencies = [
 
 [[package]]
 name = "resolute-mcp"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "chrono",
  "pretty_assertions",
@@ -3077,7 +3076,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
- "think-and-ship-core",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -3988,14 +3986,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
-]
-
-[[package]]
-name = "think-and-ship-core"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
 ]
 
 [[package]]

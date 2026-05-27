@@ -295,11 +295,66 @@ fn generate_auto_session_id() -> String {
 /// otherwise-bare custom name (e.g. `my_session`).
 pub const PROJECT_SEP: &str = "__";
 
-/// Canonical project identifier for the current process. Delegates to
-/// `think_and_ship_core::resolve_project_id` so all servers in the
-/// workspace produce the same identity for the same working directory.
+/// Canonical project identifier for the current process. Inlined from
+/// the former `think-and-ship-core` crate after the v0.2.0 merge — every
+/// server in the workspace produces the same identity for the same
+/// working directory, so the inline copy stays drift-safe by following
+/// the documented algorithm: server-specific env override, then
+/// `DELIBERATE_PROJECT_NAME`, then `<basename>-<fnv1a_6hex(cwd)>`.
 pub fn resolve_project_id() -> String {
-    think_and_ship_core::resolve_project_id(None)
+    if let Ok(raw) = std::env::var("DELIBERATE_PROJECT_NAME") {
+        let sanitized = sanitize_project_name(raw.trim());
+        if !sanitized.is_empty() {
+            return sanitized;
+        }
+    }
+
+    if let Ok(cwd) = std::env::current_dir() {
+        let path = cwd.canonicalize().unwrap_or(cwd.clone());
+        let basename = path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .map(sanitize_project_name)
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "auto".to_string());
+        let basename: String = basename.chars().take(24).collect();
+        let hash = path_hash6(&path);
+        return format!("{basename}-{hash}");
+    }
+
+    "auto".to_string()
+}
+
+/// FNV-1a 64-bit, truncated to 24 bits, formatted as 6 hex chars.
+fn path_hash6(path: &std::path::Path) -> String {
+    const FNV_OFFSET: u64 = 0xcbf29ce484222325;
+    const FNV_PRIME: u64 = 0x100000001b3;
+    let bytes = path.as_os_str().as_encoded_bytes();
+    let mut h: u64 = FNV_OFFSET;
+    for &b in bytes {
+        h ^= b as u64;
+        h = h.wrapping_mul(FNV_PRIME);
+    }
+    format!("{:06x}", (h & 0xff_ffff) as u32)
+}
+
+/// Reduce an arbitrary string to `[a-z0-9_.-]`, collapse runs of replaced
+/// chars to a single `-`, trim leading/trailing separators, cap at 32 chars.
+fn sanitize_project_name(raw: &str) -> String {
+    let mut out = String::with_capacity(raw.len());
+    let mut last_was_replace = false;
+    for c in raw.chars() {
+        if c.is_ascii_alphanumeric() || matches!(c, '_' | '.') {
+            out.push(c.to_ascii_lowercase());
+            last_was_replace = false;
+        } else if !last_was_replace && !out.is_empty() {
+            out.push('-');
+            last_was_replace = true;
+        }
+    }
+    let trimmed = out.trim_matches(|c: char| c == '-' || c == '.');
+    let capped: String = trimmed.chars().take(32).collect();
+    capped.trim_end_matches(['-', '.']).to_string()
 }
 
 /// Rewrite a caller-supplied session id so it lands inside the current
