@@ -1,43 +1,37 @@
-# deliberate-mcp
+# deliberate-mcp — DEPRECATED
 
-[![npm](https://img.shields.io/npm/v/deliberate-mcp)](https://www.npmjs.com/package/deliberate-mcp)
+> **This package is deprecated as of v0.3.2.** It has merged into the
+> unified [`think-and-ship`](https://www.npmjs.com/package/think-and-ship)
+> npm package. Installing this package now prints a redirect message
+> during postinstall and exits cleanly without downloading a binary.
 
-MCP server for structured reasoning traces. The agent records *why* before it acts — steps, branches, revisions, confidence, dependencies.
-
-Part of [think-and-ship](https://github.com/AlrikOlson/think-and-ship). Pairs with [resolute-mcp](https://www.npmjs.com/package/resolute-mcp) for execution tracking.
-
-## Install
+## Migrate
 
 ```sh
-npm install -g deliberate-mcp
+npm uninstall -g deliberate-mcp
+npm install -g think-and-ship
 ```
 
-Or install both servers at once: `npm install -g think-and-ship`
-
-## Configure
+In your MCP client config (`.mcp.json`, `.cursor/mcp.json`, etc.):
 
 ```json
 {
   "mcpServers": {
-    "deliberate": {
-      "command": "deliberate-mcp",
-      "env": {
-        "DELIBERATE_PERSIST": "true",
-        "DELIBERATE_ENABLE_SESSIONS": "true"
-      }
+    "think-and-ship": {
+      "command": "think-and-ship",
+      "args": ["serve"],
+      "env": { "THINK_AND_SHIP_PERSIST": "true" }
     }
   }
 }
 ```
 
-## Tools
+The 11 `deliberate_*` tool names continue to work as deprecated aliases
+for their `think_*` canonicals through v0.2.x of `think-and-ship`, so
+existing agent prompts don't break during the transition.
 
-11 tools under the `deliberate_` prefix:
+## Why
 
-`deliberate_record_step` | `deliberate_pin_step` | `deliberate_trace_checkpoint` | `deliberate_search_trace` | `deliberate_get_step` | `deliberate_step_impact` | `deliberate_revise_estimate` | `deliberate_set_branch_status` | `deliberate_engine_status` | `deliberate_export_trace` | `deliberate_wipe_trace`
-
-[Full documentation](https://github.com/AlrikOlson/think-and-ship)
-
-## License
-
-MIT
+See the [project README](https://github.com/AlrikOlson/think-and-ship)
+and the [v0.2.0 changelog](https://github.com/AlrikOlson/think-and-ship/blob/main/CHANGELOG.md#020--2026-05-27)
+for the rationale behind the merge.

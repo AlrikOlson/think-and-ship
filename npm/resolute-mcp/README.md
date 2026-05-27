@@ -1,40 +1,39 @@
-# resolute-mcp
+# resolute-mcp — DEPRECATED
 
-[![npm](https://img.shields.io/npm/v/resolute-mcp)](https://www.npmjs.com/package/resolute-mcp)
+> **This package is deprecated as of v0.1.2.** It has merged into the
+> unified [`think-and-ship`](https://www.npmjs.com/package/think-and-ship)
+> npm package. Installing this package now prints a redirect message
+> during postinstall and exits cleanly without downloading a binary.
 
-MCP server for structured execution tracking. The agent records *what* it did — objectives, task plans, actions, quality gates, artifacts.
-
-Part of [think-and-ship](https://github.com/AlrikOlson/think-and-ship). Pairs with [deliberate-mcp](https://www.npmjs.com/package/deliberate-mcp) for reasoning traces.
-
-## Install
+## Migrate
 
 ```sh
-npm install -g resolute-mcp
+npm uninstall -g resolute-mcp
+npm install -g think-and-ship
 ```
 
-Or install both servers at once: `npm install -g think-and-ship`
-
-## Configure
+In your MCP client config (`.mcp.json`, `.cursor/mcp.json`, etc.):
 
 ```json
 {
   "mcpServers": {
-    "resolute": {
-      "command": "resolute-mcp",
-      "env": { "RESOLUTE_PERSIST": "true" }
+    "think-and-ship": {
+      "command": "think-and-ship",
+      "args": ["serve"],
+      "env": { "THINK_AND_SHIP_PERSIST": "true" }
     }
   }
 }
 ```
 
-## Tools
+The 11 `resolute_*` tool names continue to work as deprecated aliases
+for their `ship_*` canonicals through v0.2.x of `think-and-ship`. Note:
+`resolute_ship` specifically maps to `ship_finalize` (the only non-1:1
+rename — `ship_ship` was felt to read poorly), but the alias keeps
+working transparently.
 
-11 tools under the `resolute_` prefix:
+## Why
 
-`resolute_set_objective` | `resolute_plan` | `resolute_start` | `resolute_record` | `resolute_complete` | `resolute_block` | `resolute_check` | `resolute_ship` | `resolute_status` | `resolute_export` | `resolute_reset`
-
-[Full documentation](https://github.com/AlrikOlson/think-and-ship)
-
-## License
-
-MIT
+See the [project README](https://github.com/AlrikOlson/think-and-ship)
+and the [v0.2.0 changelog](https://github.com/AlrikOlson/think-and-ship/blob/main/CHANGELOG.md#020--2026-05-27)
+for the rationale behind the merge.
