@@ -42,6 +42,13 @@ impl Broadcaster {
         EngineBroadcaster::spawn(path).map(|inner| Self { inner })
     }
 
+    /// Wrap an existing [`EngineBroadcaster`] (already spawned at the
+    /// shared socket) so this family can emit through it without binding
+    /// a second listener.
+    pub fn from_engine(inner: EngineBroadcaster) -> Self {
+        Self { inner }
+    }
+
     pub fn emit(&self, frame: BroadcastFrame) {
         if let Err(e) = self.inner.emit(Family::Ship, &frame) {
             warn!(

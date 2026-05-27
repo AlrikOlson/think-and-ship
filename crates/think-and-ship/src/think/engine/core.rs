@@ -66,6 +66,15 @@ pub struct ReasoningServer {
 }
 
 impl ReasoningServer {
+    /// Attach an externally-spawned broadcaster, overriding whatever
+    /// `new()` set up from `config.broadcast.path`. Use when one
+    /// process serves both tool families and they share a single
+    /// underlying socket.
+    pub fn with_broadcaster(mut self, broadcaster: Broadcaster) -> Self {
+        self.broadcaster = Some(broadcaster);
+        self
+    }
+
     pub fn new(config: DeliberateConfig) -> Self {
         let formatter = Formatter::new(config.display.color_output);
         let persistence = Persistence::new(&config.persistence);

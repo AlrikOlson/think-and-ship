@@ -4,14 +4,16 @@ use anyhow::{Result, bail};
 use rmcp::{ServiceExt, transport::io::stdio};
 use tracing_subscriber::EnvFilter;
 
-use crate::engine::PersistenceConfig as InfraPersistenceConfig;
+use crate::engine::{Broadcaster as EngineBroadcaster, PersistenceConfig as InfraPersistenceConfig};
 use crate::env_compat::translate_legacy_env_vars;
 use crate::mcp::UnifiedService;
 use crate::migrate::migrate_v0_1_data;
 use crate::ship::ShipService;
+use crate::ship::broadcast::Broadcaster as ShipBroadcaster;
 use crate::ship::engine::ShipEngine;
 use crate::ship::persistence::{Persistence as ShipPersistence, PersistenceConfig as ShipPersistenceConfig};
 use crate::think::ThinkService;
+use crate::think::broadcast::Broadcaster as ThinkBroadcaster;
 use crate::think::config::load_config as load_think_config;
 use crate::think::engine::core::ReasoningServer;
 
@@ -53,14 +55,40 @@ pub fn serve(http: Option<String>) -> Result<()> {
 }
 
 async fn run_server() -> Result<()> {
-    let think_config = load_think_config();
-    let think_engine = ReasoningServer::new(think_config);
+    let mut think_config = load_think_config();
+
+    // Spawn the broadcast socket ONCE so both families share a single
+    // listener. Clear the path on the think config so ReasoningServer::new
+    // doesn't try to bind it a second time — the shared handle is attached
+    // below via with_broadcaster instead.
+    let shared_broadcast = think_config
+        .broadcast
+        .path
+        .clone()
+        .and_then(EngineBroadcaster::spawn);
+    if shared_broadcast.is_some()
+        && let Some(path) = think_config.broadcast.path.as_ref()
+    {
+        eprintln!("broadcast: {} (shared by think + ship)", path.display());
+    }
+    think_config.broadcast.path = None;
+
+    let think_engine = {
+        let server = ReasoningServer::new(think_config);
+        match shared_broadcast.clone() {
+            Some(b) => server.with_broadcaster(ThinkBroadcaster::from_engine(b)),
+            None => server,
+        }
+    };
     let think_service = ThinkService::new(think_engine);
 
     let project_id = crate::engine::resolve_project_id(None);
     let ship_persist_cfg = ShipPersistenceConfig::from_env();
     let ship_persistence = ShipPersistence::new(&ship_persist_cfg);
-    let ship_engine = ShipEngine::new(project_id.clone()).with_persistence(ship_persistence);
+    let mut ship_engine = ShipEngine::new(project_id.clone()).with_persistence(ship_persistence);
+    if let Some(b) = shared_broadcast {
+        ship_engine = ship_engine.with_broadcaster(ShipBroadcaster::from_engine(b));
+    }
     let ship_service = ShipService::new(ship_engine);
 
     let unified = UnifiedService::new(think_service, ship_service);

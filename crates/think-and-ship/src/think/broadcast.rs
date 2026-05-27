@@ -90,6 +90,13 @@ impl Broadcaster {
         EngineBroadcaster::spawn(path).map(|inner| Self { inner })
     }
 
+    /// Wrap an existing [`EngineBroadcaster`] (already spawned at the
+    /// shared socket) so this family can emit through it without binding
+    /// a second listener.
+    pub fn from_engine(inner: EngineBroadcaster) -> Self {
+        Self { inner }
+    }
+
     /// Enqueue a frame for fan-out. Fire-and-forget: any encode or
     /// channel error is logged and dropped so the calling tool path is
     /// never affected.
