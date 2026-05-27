@@ -113,6 +113,11 @@ The generated config:
 
 ## Architecture
 
+> **Heads-up:** v0.2.0 merges the two servers into a single `think-and-ship`
+> MCP server with `think_*` and `ship_*` tool families. The shape below
+> describes the shipped v0.1.x layout. For the unified design, see
+> [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ### Project identity
 
 Both servers resolve the same `project_id` from your working directory: `<dir-basename>-<fnv1a-hash>`. Override with `DELIBERATE_PROJECT_NAME` or `RESOLUTE_PROJECT_NAME`.
