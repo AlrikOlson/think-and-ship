@@ -9,6 +9,8 @@
 
 pub mod cli;
 pub mod engine;
+pub mod env_compat;
 pub mod mcp;
+pub mod migrate;
 pub mod ship;
 pub mod think;
