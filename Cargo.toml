@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/think-and-ship-core", "crates/resolute-mcp", "crates/deliberate-mcp", "crates/deliberate-mcp/app/src-tauri"]
+members = ["crates/think-and-ship", "crates/think-and-ship-core", "crates/resolute-mcp", "crates/deliberate-mcp", "crates/deliberate-mcp/app/src-tauri"]
 resolver = "2"
 
 [workspace.package]
