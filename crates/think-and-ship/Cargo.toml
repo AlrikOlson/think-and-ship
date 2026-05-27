@@ -36,3 +36,7 @@ rmcp = { version = "1.7", features = ["server", "transport-io", "macros", "schem
 [dev-dependencies]
 tempfile = "3"
 pretty_assertions = "1"
+# rmcp client feature is dev-only — it's used by the e2e test to drive
+# the server over a tokio::io::duplex transport. The runtime crate
+# itself only exposes the server side.
+rmcp = { version = "1.7", features = ["client"] }
