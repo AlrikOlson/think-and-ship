@@ -3,7 +3,6 @@
 //! [`crate::state::AppState`] and emits Tauri events to the frontend.
 
 pub mod file;
-pub mod resolute_socket;
 pub mod socket;
 
 use std::sync::Arc;
@@ -34,12 +33,8 @@ pub enum SourceEvent {
     SocketConnected,
     /// The deliberate socket source disconnected (peer closed or never bound).
     SocketDisconnected,
-    /// Real-time frame from the resolute broadcast socket.
+    /// Real-time frame from the broadcast socket carrying `family: "ship"`.
     ResoluteFrame(ResoluteBroadcastFrame),
-    /// The resolute socket source connected.
-    ResoluteSocketConnected,
-    /// The resolute socket source disconnected.
-    ResoluteSocketDisconnected,
 }
 
 /// Wire-format event the frontend listens to. The frontend keeps its own
@@ -101,7 +96,10 @@ impl Orchestrator {
 
         let (tx, mut rx) = mpsc::unbounded_channel::<SourceEvent>();
 
-        // Spawn the socket source if a path is configured.
+        // Spawn the unified socket source if a path is configured.
+        // It reads one shared NDJSON stream and dispatches frames by
+        // their `family` tag, so this single task covers both think
+        // and ship events.
         let socket_path = self.state.lock().await.source.socket_path.clone();
         if let Some(path) = socket_path {
             let tx_s = tx.clone();
@@ -116,15 +114,6 @@ impl Orchestrator {
             let tx_f = tx.clone();
             tokio::spawn(async move {
                 file::run(dir, tx_f).await;
-            });
-        }
-
-        // Spawn the resolute socket source.
-        let resolute_path = self.state.lock().await.source.resolute_socket_path.clone();
-        if let Some(path) = resolute_path {
-            let tx_r = tx.clone();
-            tokio::spawn(async move {
-                resolute_socket::run(path, tx_r).await;
             });
         }
 
@@ -172,7 +161,6 @@ impl Orchestrator {
             SourceEvent::ResoluteFrame(frame) => {
                 let _ = self.handle.emit("execution://event", &frame);
             }
-            SourceEvent::ResoluteSocketConnected | SourceEvent::ResoluteSocketDisconnected => {}
         }
     }
 

@@ -29,10 +29,11 @@ pub enum SourceMode {
 #[derive(Debug, Clone, Serialize)]
 pub struct SourceInfo {
     pub mode: SourceMode,
+    /// Unified broadcast socket path. Both think and ship frames arrive
+    /// over this single socket with a `family` tag distinguishing them.
     pub socket_path: Option<PathBuf>,
     pub data_dir: Option<PathBuf>,
     pub persistence_enabled: bool,
-    pub resolute_socket_path: Option<PathBuf>,
 }
 
 /// A single session's snapshot — what the frontend renders. `branches` is
@@ -248,15 +249,12 @@ impl AppState {
             (false, false) => SourceMode::None,
         };
 
-        let resolute_socket_path = resolve_resolute_socket_path();
-
         Self {
             source: SourceInfo {
                 mode,
                 socket_path,
                 data_dir,
                 persistence_enabled,
-                resolute_socket_path,
             },
             sessions,
             active_session: String::new(),
@@ -275,20 +273,40 @@ impl AppState {
     }
 }
 
-/// Default socket path the viewer probes when `DELIBERATE_BROADCAST_PATH`
-/// isn't exported in its own env. Matches the path documented in the
-/// README and in the example `~/.claude.json` env block, so the common
-/// case requires no setup on the viewer side.
-const DEFAULT_SOCKET_PATH: &str = "/tmp/deliberate.sock";
-
+/// Default socket path the viewer probes when no env override is set.
+/// Matches the path documented in the README and in the example
+/// `~/.claude.json` env block, so the common case requires no setup on
+/// the viewer side. Falls back to `/tmp/deliberate.sock` for v0.1.x
+/// installs that haven't been upgraded.
 fn resolve_socket_path() -> Option<PathBuf> {
+    // Canonical name first.
+    if let Ok(raw) = env::var("THINK_AND_SHIP_BROADCAST_PATH") {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            return Some(PathBuf::from(trimmed));
+        }
+    }
+    // Legacy name kept for v0.1.x users mid-migration.
     if let Ok(raw) = env::var("DELIBERATE_BROADCAST_PATH") {
         let trimmed = raw.trim();
         if !trimmed.is_empty() {
             return Some(PathBuf::from(trimmed));
         }
     }
-    Some(PathBuf::from(DEFAULT_SOCKET_PATH))
+    // Unified-server default path.
+    if let Ok(home) = env::var("HOME") {
+        let trimmed = home.trim();
+        if !trimmed.is_empty() {
+            let candidate = PathBuf::from(trimmed)
+                .join(".local")
+                .join("share")
+                .join("think-and-ship")
+                .join("broadcast.sock");
+            return Some(candidate);
+        }
+    }
+    // Final fallback for v0.1.x.
+    Some(PathBuf::from("/tmp/deliberate.sock"))
 }
 
 /// Mirror `deliberate_mcp::config::default_data_dir` exactly so the
@@ -299,6 +317,17 @@ fn resolve_socket_path() -> Option<PathBuf> {
 /// not it exists yet — the watcher creates the sessions subdir on
 /// demand.
 fn resolve_data_dir() -> Option<PathBuf> {
+    // Canonical THINK_AND_SHIP_DATA_DIR. Treated as the unified root, so
+    // we suffix `think/` to land on the think family's sessions subdir.
+    if let Ok(raw) = env::var("THINK_AND_SHIP_DATA_DIR") {
+        let trimmed = raw.trim();
+        if !trimmed.is_empty() {
+            return Some(PathBuf::from(trimmed).join("think"));
+        }
+    }
+    // Legacy DELIBERATE_DATA_DIR was understood as pointing at the
+    // deliberate-mcp data root directly (no family suffix), so honor that
+    // shape verbatim for v0.1.x users mid-upgrade.
     if let Ok(raw) = env::var("DELIBERATE_DATA_DIR") {
         let trimmed = raw.trim();
         if !trimmed.is_empty() {
@@ -308,7 +337,11 @@ fn resolve_data_dir() -> Option<PathBuf> {
     if let Ok(xdg) = env::var("XDG_DATA_HOME") {
         let trimmed = xdg.trim();
         if !trimmed.is_empty() {
-            return Some(PathBuf::from(trimmed).join("deliberate-mcp"));
+            return Some(
+                PathBuf::from(trimmed)
+                    .join("think-and-ship")
+                    .join("think"),
+            );
         }
     }
     if let Ok(home) = env::var("HOME") {
@@ -318,21 +351,10 @@ fn resolve_data_dir() -> Option<PathBuf> {
                 PathBuf::from(trimmed)
                     .join(".local")
                     .join("share")
-                    .join("deliberate-mcp"),
+                    .join("think-and-ship")
+                    .join("think"),
             );
         }
     }
     None
-}
-
-const DEFAULT_RESOLUTE_SOCKET_PATH: &str = "/tmp/resolute.sock";
-
-fn resolve_resolute_socket_path() -> Option<PathBuf> {
-    if let Ok(raw) = env::var("RESOLUTE_BROADCAST_PATH") {
-        let trimmed = raw.trim();
-        if !trimmed.is_empty() {
-            return Some(PathBuf::from(trimmed));
-        }
-    }
-    Some(PathBuf::from(DEFAULT_RESOLUTE_SOCKET_PATH))
 }
