@@ -129,6 +129,9 @@ fn build_unified() -> Result<(UnifiedService, String)> {
     if let Some(b) = shared_broadcast {
         ship_engine = ship_engine.with_broadcaster(ShipBroadcaster::from_engine(b));
     }
+    if let Some((sink, shared)) = repo_sink {
+        ship_engine = ship_engine.with_repo_sink(sink, shared);
+    }
     let ship_service = ShipService::new(ship_engine);
 
     Ok((UnifiedService::new(think_service, ship_service), project_id))

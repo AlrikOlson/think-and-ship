@@ -15,6 +15,14 @@ pub struct ShipEngine {
     next_action_id: u32,
     persistence: Option<Persistence>,
     broadcaster: Option<Broadcaster>,
+    /// Optional git-native trace sink (Phase 23b). When set, every mutation is
+    /// mirrored into `.think-and-ship/` as an Agent Trace JSONL record and the
+    /// session is committed on `ship_finalize`. `None` = the default Local
+    /// behaviour. Writes are fire-and-forget — a sink error never fails a tool.
+    repo_sink: Option<crate::infra::RepoSink>,
+    /// Whether mirrored records are `shared` (committed `sessions/`) vs `local`
+    /// (gitignored). Default `false`. Only meaningful with `repo_sink`.
+    repo_shared: bool,
 }
 
 impl ShipEngine {
@@ -26,6 +34,8 @@ impl ShipEngine {
             next_action_id: 1,
             persistence: None,
             broadcaster: None,
+            repo_sink: None,
+            repo_shared: false,
         }
     }
 
@@ -34,9 +44,108 @@ impl ShipEngine {
         self
     }
 
+    /// Attach a git-native trace sink so mutations are mirrored into the repo's
+    /// `.think-and-ship/` as Agent Trace JSONL. `shared` selects the committed
+    /// `sessions/` partition (`true`) vs the gitignored `local/` partition
+    /// (`false`). Wired by `cli::build_unified`.
+    pub fn with_repo_sink(mut self, sink: crate::infra::RepoSink, shared: bool) -> Self {
+        self.repo_sink = Some(sink);
+        self.repo_shared = shared;
+        self
+    }
+
     fn broadcast(&self, frame: BroadcastFrame) {
+        // Mirror into the git-native trace first (Phase 23b), then fan out to
+        // the socket. Both are fire-and-forget.
+        self.mirror_frame_to_repo(&frame);
         if let Some(b) = &self.broadcaster {
             b.emit(frame);
+        }
+    }
+
+    /// Map a mutation frame to an Agent Trace record and append it to the repo
+    /// trace; commit the session on `ObjectiveShipped`. No-op without a sink.
+    /// Fire-and-forget: every failure is logged at WARN and dropped so the
+    /// mutation path is never affected. The frame→record mapping lives here
+    /// (engine-side) so `infra::repo_sync` stays domain-free.
+    fn mirror_frame_to_repo(&self, frame: &BroadcastFrame) {
+        let Some(sink) = &self.repo_sink else {
+            return;
+        };
+
+        let task_payload = |task_id: &str| {
+            self.tasks
+                .iter()
+                .find(|t| t.id == task_id)
+                .map(|t| serde_json::to_value(t).unwrap_or(serde_json::Value::Null))
+                .unwrap_or(serde_json::Value::Null)
+        };
+
+        // (kind, payload, files[], is_session_close)
+        let (kind, payload, files, closes) = match frame {
+            BroadcastFrame::ObjectiveSet { objective } => (
+                "objective",
+                serde_json::to_value(objective).unwrap_or(serde_json::Value::Null),
+                vec![],
+                false,
+            ),
+            BroadcastFrame::TaskAdded { task_id, .. }
+            | BroadcastFrame::TaskStarted { task_id }
+            | BroadcastFrame::TaskCompleted { task_id }
+            | BroadcastFrame::TaskBlocked { task_id, .. } => {
+                ("task", task_payload(task_id), vec![], false)
+            }
+            BroadcastFrame::ActionRecorded { action, .. } => {
+                let model_id = std::env::var("THINK_AND_SHIP_MODEL_ID")
+                    .ok()
+                    .filter(|s| !s.is_empty());
+                let files = action
+                    .files_touched
+                    .iter()
+                    .map(|p| crate::infra::file_attribution(p, model_id.as_deref()))
+                    .collect();
+                (
+                    "action",
+                    serde_json::to_value(action).unwrap_or(serde_json::Value::Null),
+                    files,
+                    false,
+                )
+            }
+            BroadcastFrame::CheckRecorded { check, .. } => (
+                "check",
+                serde_json::to_value(check).unwrap_or(serde_json::Value::Null),
+                vec![],
+                false,
+            ),
+            BroadcastFrame::ObjectiveShipped { .. } => (
+                "objective",
+                serde_json::to_value(&self.objective).unwrap_or(serde_json::Value::Null),
+                vec![],
+                true,
+            ),
+            // `Cleared` is a reset, not a trace event — nothing to record.
+            BroadcastFrame::Cleared => return,
+        };
+
+        let session_id = self.project_id.clone();
+        let ctx = crate::infra::RecordCtx::resolve(sink.repo_root());
+        let record = ctx.build_record("ship", kind, &session_id, self.repo_shared, payload, files);
+
+        if let Err(e) = sink.append(&session_id, self.repo_shared, &record) {
+            tracing::warn!(
+                target: "think_and_ship::ship::repo_sync",
+                "dropping git-native trace append: {e}",
+            );
+            return;
+        }
+
+        if closes && self.repo_shared {
+            if let Err(e) = sink.commit_session(&session_id) {
+                tracing::warn!(
+                    target: "think_and_ship::ship::repo_sync",
+                    "git-native trace commit failed: {e}",
+                );
+            }
         }
     }
 
