@@ -358,24 +358,24 @@ pub fn export(_format: &str) -> Result<()> {
 /// the committed `sessions/` partition (Phase 23c). `step` filters to a single
 /// reasoning step number; omit it to promote the whole session. Does not commit
 /// — review + `git commit` (with the redaction hook) afterward.
-pub fn promote(session: &str, step: Option<u32>) -> Result<()> {
+pub fn promote(session: &str, step: Option<u32>, kind: Option<&str>) -> Result<()> {
     let cwd = std::env::current_dir().context("resolving current directory")?;
     let root = discover_repo_root(&cwd)
         .context("not inside a git repository — git-native traces require a repo")?;
     let sink = RepoSink::new(root);
     let out = sink
-        .promote(session, step)
+        .promote(session, step, kind)
         .with_context(|| format!("promoting session {session}"))?;
-    match step {
-        Some(n) => println!(
-            "promoted {} record(s) for step {n} in session '{session}' ({} kept local)",
-            out.promoted, out.kept
-        ),
-        None => println!(
-            "promoted {} record(s) in session '{session}' ({} kept local)",
-            out.promoted, out.kept
-        ),
-    }
+    let filter = match (step, kind) {
+        (Some(n), Some(k)) => format!(" (step {n}, kind {k})"),
+        (Some(n), None) => format!(" (step {n})"),
+        (None, Some(k)) => format!(" (kind {k})"),
+        (None, None) => String::new(),
+    };
+    println!(
+        "promoted {} record(s){filter} in session '{session}' ({} kept local)",
+        out.promoted, out.kept
+    );
     if out.promoted > 0 {
         println!(
             "→ review .think-and-ship/sessions/{session}.jsonl, then `git add` + commit \

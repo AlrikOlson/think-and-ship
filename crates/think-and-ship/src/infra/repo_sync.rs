@@ -310,12 +310,21 @@ impl RepoSink {
     ///
     /// When `step` is `Some(n)`, only records whose
     /// `metadata.dev.thinkandship.record.step_number == n` are promoted (the
-    /// per-step curation path); `None` promotes every record in the session.
+    /// per-step curation path, think-only since ship records have no step
+    /// number). When `kind` is `Some(k)`, only records whose
+    /// `metadata.dev.thinkandship.kind == k` are promoted (`step`/`task`/
+    /// `objective`/`action`/`check`) — the selector for ship records. The two
+    /// filters AND together; both `None` promotes every record in the session.
     /// Kept records are rewritten atomically (tmp + rename); the local file is
     /// removed when empty. Does **not** commit — the promoted records are now in
     /// the git-tracked `sessions/` file for the caller to commit (after the
     /// pre-commit redaction hook runs).
-    pub fn promote(&self, session_id: &str, step: Option<u32>) -> std::io::Result<PromoteOutcome> {
+    pub fn promote(
+        &self,
+        session_id: &str,
+        step: Option<u32>,
+        kind: Option<&str>,
+    ) -> std::io::Result<PromoteOutcome> {
         let local_path = self
             .trace_dir()
             .join("local")
@@ -338,7 +347,7 @@ impl RepoSink {
                 continue;
             }
             let mut rec: Value = serde_json::from_str(line).map_err(std::io::Error::other)?;
-            let selected = match step {
+            let step_ok = match step {
                 None => true,
                 Some(n) => {
                     rec.pointer("/metadata/dev.thinkandship/record/step_number")
@@ -346,6 +355,15 @@ impl RepoSink {
                         == Some(u64::from(n))
                 }
             };
+            let kind_ok = match kind {
+                None => true,
+                Some(k) => {
+                    rec.pointer("/metadata/dev.thinkandship/kind")
+                        .and_then(Value::as_str)
+                        == Some(k)
+                }
+            };
+            let selected = step_ok && kind_ok;
             if selected {
                 if let Some(ext) = rec
                     .pointer_mut("/metadata/dev.thinkandship")
@@ -722,7 +740,7 @@ mod tests {
         let sink = RepoSink::new(tmp.path());
         seed_local_steps(&sink);
 
-        let out = sink.promote("s1", Some(2)).unwrap();
+        let out = sink.promote("s1", Some(2), None).unwrap();
         assert_eq!(
             out,
             PromoteOutcome {
@@ -759,7 +777,7 @@ mod tests {
         let sink = RepoSink::new(tmp.path());
         seed_local_steps(&sink);
 
-        let out = sink.promote("s1", None).unwrap();
+        let out = sink.promote("s1", None, None).unwrap();
         assert_eq!(
             out,
             PromoteOutcome {
@@ -782,7 +800,7 @@ mod tests {
     fn promote_missing_session_is_noop() {
         let tmp = TempDir::new().unwrap();
         let sink = RepoSink::new(tmp.path());
-        let out = sink.promote("does-not-exist", None).unwrap();
+        let out = sink.promote("does-not-exist", None, None).unwrap();
         assert_eq!(
             out,
             PromoteOutcome {
@@ -797,7 +815,7 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let sink = RepoSink::new(tmp.path());
         seed_local_steps(&sink);
-        let out = sink.promote("s1", Some(99)).unwrap();
+        let out = sink.promote("s1", Some(99), None).unwrap();
         assert_eq!(
             out,
             PromoteOutcome {
@@ -808,6 +826,74 @@ mod tests {
         assert_eq!(
             read_lines(&tmp.path().join(".think-and-ship/local/s1.jsonl")).len(),
             3
+        );
+    }
+
+    /// Seed a mixed ship session: objective, two actions, one check.
+    fn seed_local_ship(sink: &RepoSink) {
+        let kinds = ["objective", "action", "action", "check"];
+        for (i, k) in kinds.iter().enumerate() {
+            let rec = ctx().build_record("ship", k, "s2", false, json!({ "n": i }), vec![]);
+            sink.append("s2", false, &rec).unwrap();
+        }
+    }
+
+    #[test]
+    fn promote_by_kind_moves_matching_records() {
+        let tmp = TempDir::new().unwrap();
+        let sink = RepoSink::new(tmp.path());
+        seed_local_ship(&sink);
+
+        // Ship records have no step_number, so --kind is the selector.
+        let out = sink.promote("s2", None, Some("action")).unwrap();
+        assert_eq!(
+            out,
+            PromoteOutcome {
+                promoted: 2,
+                kept: 2
+            }
+        );
+
+        let shared = read_lines(&tmp.path().join(".think-and-ship/sessions/s2.jsonl"));
+        assert_eq!(shared.len(), 2);
+        assert!(shared.iter().all(|r| {
+            r["metadata"]["dev.thinkandship"]["kind"] == "action"
+                && r["metadata"]["dev.thinkandship"]["shared"] == true
+        }));
+
+        // objective + check stay local.
+        let local = read_lines(&tmp.path().join(".think-and-ship/local/s2.jsonl"));
+        let kept: Vec<&str> = local
+            .iter()
+            .map(|r| r["metadata"]["dev.thinkandship"]["kind"].as_str().unwrap())
+            .collect();
+        assert_eq!(kept, vec!["objective", "check"]);
+    }
+
+    #[test]
+    fn promote_step_and_kind_and_together() {
+        let tmp = TempDir::new().unwrap();
+        let sink = RepoSink::new(tmp.path());
+        seed_local_steps(&sink); // think steps 1,2,3 with kind "step"
+
+        // step=2 AND kind=step → exactly the one record.
+        let out = sink.promote("s1", Some(2), Some("step")).unwrap();
+        assert_eq!(
+            out,
+            PromoteOutcome {
+                promoted: 1,
+                kept: 2
+            }
+        );
+
+        // step=2 AND kind=action → nothing (no action records here).
+        let out = sink.promote("s1", Some(2), Some("action")).unwrap();
+        assert_eq!(
+            out,
+            PromoteOutcome {
+                promoted: 0,
+                kept: 2
+            }
         );
     }
 }

@@ -46,9 +46,12 @@ enum Command {
         /// Session id whose records to promote (the JSONL filename stem).
         #[arg(long, value_name = "ID")]
         session: String,
-        /// Only promote the reasoning step with this number; omit to promote all.
+        /// Only promote the reasoning step with this number (think records).
         #[arg(long, value_name = "N")]
         step: Option<u32>,
+        /// Only promote records of this kind: step | objective | task | action | check.
+        #[arg(long, value_name = "KIND")]
+        kind: Option<String>,
     },
 }
 
@@ -63,6 +66,10 @@ fn main() -> Result<()> {
         Command::Doctor => cli::doctor(),
         Command::Status => cli::status(),
         Command::Export { format } => cli::export(&format),
-        Command::Promote { session, step } => cli::promote(&session, step),
+        Command::Promote {
+            session,
+            step,
+            kind,
+        } => cli::promote(&session, step, kind.as_deref()),
     }
 }
