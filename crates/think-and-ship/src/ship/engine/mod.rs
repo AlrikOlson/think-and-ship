@@ -139,13 +139,14 @@ impl ShipEngine {
             return;
         }
 
-        if closes && self.repo_shared {
-            if let Err(e) = sink.commit_session(&session_id) {
-                tracing::warn!(
-                    target: "think_and_ship::ship::repo_sync",
-                    "git-native trace commit failed: {e}",
-                );
-            }
+        if closes
+            && self.repo_shared
+            && let Err(e) = sink.commit_session(&session_id)
+        {
+            tracing::warn!(
+                target: "think_and_ship::ship::repo_sync",
+                "git-native trace commit failed: {e}",
+            );
         }
     }
 
