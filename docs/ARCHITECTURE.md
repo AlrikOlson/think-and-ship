@@ -305,6 +305,55 @@ can warn and refuse rather than mis-parse new shapes.
 
 ---
 
+## Git-native shared traces (design — Phase 23)
+
+Beyond the per-user XDG persistence above, traces can optionally be written
+**into the repo** under `.think-and-ship/` so a team shares reasoning +
+execution history through normal git. The on-disk wire format — a strict
+superset of the [Agent Trace](https://agent-trace.dev/) standard — is specified
+in [`docs/SCHEMA.md`](./SCHEMA.md). This section records the two architectural
+**non-negotiables** that constrain the writer (Phase 23b).
+
+### Non-negotiable #1 — one commit per *session*, never per step
+
+The writer commits on **session close** (`think_record_step` with
+`is_final_step: true`, or `ship_finalize`), not on every mutation. The math is
+the whole reason:
+
+| Granularity | Commits/day @ 100 sessions × 5 devs × 50 steps | Verdict |
+|-------------|-----------------------------------------------|---------|
+| Per **step** | ~25,000 commits/day | Repo becomes unusable within a year |
+| Per **session** | ~500 commits/day | Fine indefinitely (18–24 mo runway before a DB is warranted) |
+
+Within a session, records stream to the `.jsonl` file as they happen (atomic
+append: write `.tmp` → fsync → rename); the **git commit** batches the whole
+session's lines into one commit when the session ends.
+
+### Non-negotiable #2 — local-vs-shared partition, default private
+
+```
+<repo-root>/.think-and-ship/
+├── sessions/   # shared:true  → committed   (team AI Decision Records)
+└── local/      # shared:false → gitignored  (personal scratch; default)
+```
+
+Every record carries `metadata["dev.thinkandship"].shared: bool`. **Default
+`false`** → it lands in the gitignored `local/` partition. Sharing is opt-**in**
+(never opt-out), because reasoning traces can contain pasted prompts with
+sensitive data. Promotion (`local` → `sessions`) is a deliberate curation step
+via the `think-and-ship promote` CLI (Phase 23c), gated behind pre-commit
+secret redaction.
+
+A third non-negotiable (pre-commit secret redaction) is a *process* control,
+not an architectural one — it lives in Phase 23c, not here.
+
+> The selection of git-as-substrate (vs a sidecar repo, a DB, or a CRDT) and
+> the survey behind it are recorded in the roadmap's 2026-05-28 research notes.
+> A pluggable `SyncBackend` (Automerge / Iroh) is deferred to Phase 25; the
+> per-session-commit `RepoGit` writer is the credible v1.
+
+---
+
 ## Environment variables
 
 New (canonical) names, all prefixed `THINK_AND_SHIP_`:
