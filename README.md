@@ -134,6 +134,44 @@ think-and-ship serve --http :8080
 # → think-and-ship http on http://127.0.0.1:8080/mcp
 ```
 
+## Specification compliance
+
+think-and-ship targets **MCP `2025-06-18`** (via rmcp 1.7). Both stdio
+and Streamable HTTP transports advertise this protocol version on
+`initialize`.
+
+### What we don't yet have from `2025-11-25`
+
+The November 2025 interim spec added several capabilities we don't
+implement yet — most of them gate on rmcp catching up:
+
+| Capability                       | Status                                 |
+|----------------------------------|----------------------------------------|
+| Tasks (durable requests, SEP-1686) | Pending rmcp support                 |
+| Icons on tools/resources (SEP-973) | Pending rmcp support                 |
+| OIDC discovery for auth servers   | Pending rmcp support; we ship unauth   |
+| Elicitation redesign (SEP-1330)   | Pending rmcp support                   |
+| Tool calling in sampling (SEP-1577) | Pending rmcp support                 |
+| JSON Schema 2020-12 default       | ✅ already met (schemars 1.x default)  |
+
+### `2026-07-28` Release Candidate readiness
+
+The RC is a breaking spec revision: stateless transport (no
+`Mcp-Session-Id`, no `initialize` handshake), `_meta`-envelope routing,
+multi-round-trip requests, hardened OAuth, an Extensions framework, and
+the `-32002` → `-32602` error-code flip for missing resources.
+
+**Existing v0.2.0 deployments do not break.** SEP-2596 guarantees a
+**≥12-month deprecation window** between a spec being marked deprecated
+and being removed, so a `2025-06-18` server stays valid against any
+`2026-07-28`-aware client for at least a year after the new spec ships.
+
+When [rust-sdk#526](https://github.com/modelcontextprotocol/rust-sdk/issues/526)
+lands (SEP-1442 statelessness), the migration on our side is
+expected to be one wiring change in `cli/mod.rs` — the application-level
+session id (which keys persistence and broadcast files) is independent
+of the protocol session and continues unchanged.
+
 ## Remote deployment
 
 The Streamable HTTP transport is meant for remote MCP clients (browser

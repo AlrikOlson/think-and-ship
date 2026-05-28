@@ -13,6 +13,12 @@ piece live?" without having to read source.
 
 ---
 
+## Status
+
+- **Spec version:** MCP `2025-06-18` (via rmcp 1.7)
+- **Next migration target:** `2026-07-28` RC — pending [rust-sdk#526](https://github.com/modelcontextprotocol/rust-sdk/issues/526)
+- **Deprecation window:** ≥12 months per SEP-2596 — current server stays valid against future clients
+
 ## Table of contents
 
 1. [Why merge](#why-merge)
@@ -385,6 +391,45 @@ workspace. The merge is designed to preserve that.
 
 Every code change should be reviewable against this table: a refactor
 that breaks one of these rows is a refactor that should be rethought.
+
+---
+
+## MCP specification version
+
+Targets **MCP `2025-06-18`** transitively via rmcp 1.7. Both stdio and
+Streamable HTTP transports advertise this protocol version on
+`initialize`.
+
+The `2026-07-28` Release Candidate is the next breaking revision:
+stateless transport (`Mcp-Session-Id` removed, `initialize` handshake
+gone, `_meta`-envelope routing), Extensions framework, hardened OAuth,
+JSON Schema 2020-12 default (already met via schemars 1.x), and the
+`-32002` → `-32602` error-code flip for missing resources.
+
+**Migration is gated on rmcp**, tracked at
+[modelcontextprotocol/rust-sdk#526](https://github.com/modelcontextprotocol/rust-sdk/issues/526)
+(SEP-1442 statelessness). The architectural commitment that makes this
+safe is the **separation of the application-level stable session id
+from the protocol session id**:
+
+- The application session id (`<project_basename>-<6hex>` from
+  `infra::resolve_project_id` → `infra::resolve_default_session_id`)
+  keys persistence files and broadcast frames. It is process-wide,
+  derived from the working directory, and orthogonal to whatever
+  identity the transport assigns to a single client connection.
+- The protocol session id (rmcp's `LocalSessionManager`, wired in
+  `crates/think-and-ship/src/cli/mod.rs`) is owned by the transport
+  layer and is what `2026-07-28` removes. We never read it.
+
+When rmcp ships statelessness support, the migration on our side is
+expected to be one wiring change: drop `LocalSessionManager`, pass
+whatever stateless equivalent rmcp exposes. Application state and
+documented behavior do not change.
+
+**Deprecation window guarantee:** SEP-2596 requires ≥12 months between
+a spec being deprecated and being removed, so a `2025-06-18` server
+stays valid against `2026-07-28`-aware clients for at least a year
+after the new spec ships. We have time to migrate cleanly.
 
 ---
 
