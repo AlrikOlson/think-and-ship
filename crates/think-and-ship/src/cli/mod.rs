@@ -133,10 +133,25 @@ async fn run_stdio(unified: UnifiedService) -> Result<()> {
 
 async fn run_http(addr: SocketAddr, unified: UnifiedService) -> Result<()> {
     let ct = CancellationToken::new();
+    let mut config =
+        StreamableHttpServerConfig::default().with_cancellation_token(ct.child_token());
+    // Both env-driven knobs *replace* rmcp's defaults. Unset → keep defaults
+    // (loopback-only host validation, no Origin validation). README documents
+    // that public deployments overriding ALLOWED_HOSTS lose the localhost
+    // entry unless they include it explicitly.
+    if let Some(hosts) = parse_csv_env("THINK_AND_SHIP_HTTP_ALLOWED_HOSTS") {
+        eprintln!("http allowed hosts: {hosts:?}");
+        config = config.with_allowed_hosts(hosts);
+    }
+    if let Some(origins) = parse_csv_env("THINK_AND_SHIP_HTTP_ALLOWED_ORIGINS") {
+        eprintln!("http allowed origins: {origins:?}");
+        config = config.with_allowed_origins(origins);
+    }
+
     let http_service = StreamableHttpService::new(
         move || Ok::<_, std::io::Error>(unified.clone()),
         Arc::new(LocalSessionManager::default()),
-        StreamableHttpServerConfig::default().with_cancellation_token(ct.child_token()),
+        config,
     );
 
     let router = axum::Router::new().nest_service("/mcp", http_service);
@@ -155,6 +170,24 @@ async fn run_http(addr: SocketAddr, unified: UnifiedService) -> Result<()> {
         })
         .await?;
     Ok(())
+}
+
+/// Parse a comma-separated env var into a Vec of trimmed, non-empty entries.
+/// Returns None when the var is unset, empty, or contains only whitespace and
+/// commas (so the caller can leave the rmcp config default in place).
+fn parse_csv_env(name: &str) -> Option<Vec<String>> {
+    let raw = std::env::var(name).ok()?;
+    let entries: Vec<String> = raw
+        .split(',')
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from)
+        .collect();
+    if entries.is_empty() {
+        None
+    } else {
+        Some(entries)
+    }
 }
 
 /// Accept three input shapes:
@@ -232,5 +265,40 @@ mod tests {
     #[test]
     fn parse_http_addr_rejects_garbage() {
         assert!(parse_http_addr("not-an-address").is_err());
+    }
+
+    // Process env is shared — fold the four parse_csv_env scenarios into
+    // one sequential test so they don't race on the same key.
+    #[test]
+    fn parse_csv_env_covers_unset_empty_single_and_list() {
+        const KEY: &str = "THINK_AND_SHIP_TEST_CSV_PARSE";
+
+        // (1) Unset → None
+        unsafe { std::env::remove_var(KEY) };
+        assert_eq!(parse_csv_env(KEY), None);
+
+        // (2) Empty / whitespace-only → None
+        unsafe { std::env::set_var(KEY, "   ,  ,") };
+        assert_eq!(parse_csv_env(KEY), None);
+
+        // (3) Single value, with surrounding whitespace
+        unsafe { std::env::set_var(KEY, "  https://app.example.com  ") };
+        assert_eq!(
+            parse_csv_env(KEY),
+            Some(vec!["https://app.example.com".to_string()])
+        );
+
+        // (4) Comma-separated list with mixed whitespace + an empty slot
+        unsafe { std::env::set_var(KEY, "a.example.com, b.example.com,,c.example.com ") };
+        assert_eq!(
+            parse_csv_env(KEY),
+            Some(vec![
+                "a.example.com".to_string(),
+                "b.example.com".to_string(),
+                "c.example.com".to_string(),
+            ])
+        );
+
+        unsafe { std::env::remove_var(KEY) };
     }
 }

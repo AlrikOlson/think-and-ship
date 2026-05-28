@@ -113,17 +113,85 @@ The generated config — **one entry**, not two:
 
 ## CLI
 
-| Command                          | What it does                                  |
-|----------------------------------|-----------------------------------------------|
-| `think-and-ship serve`           | Run as MCP server on stdio                    |
-| `think-and-ship init`            | Write MCP config for your IDE                 |
-| `think-and-ship init --full`     | MCP config + CLAUDE.md tool reference         |
-| `think-and-ship init --dry-run`  | Preview without writing                       |
-| `think-and-ship init --force`    | Overwrite existing config                     |
-| `think-and-ship doctor`          | Diagnose setup issues                         |
-| `think-and-ship status`          | Project info + config state                   |
-| `think-and-ship --check`         | Verify the binary is installed                |
-| `think-and-ship --version`       | Show version info                             |
+| Command                              | What it does                                  |
+|--------------------------------------|-----------------------------------------------|
+| `think-and-ship serve`               | Run as MCP server on stdio                    |
+| `think-and-ship serve --http :8080`  | Run as MCP server over Streamable HTTP        |
+| `think-and-ship init`                | Write MCP config for your IDE                 |
+| `think-and-ship init --full`         | MCP config + CLAUDE.md tool reference         |
+| `think-and-ship init --dry-run`      | Preview without writing                       |
+| `think-and-ship init --force`        | Overwrite existing config                     |
+| `think-and-ship doctor`              | Diagnose setup issues                         |
+| `think-and-ship status`              | Project info + config state                   |
+| `think-and-ship --check`             | Verify the binary is installed                |
+| `think-and-ship --version`           | Show version info                             |
+
+The `--http` flag accepts `host:port`, `:port`, or a bare `port` (defaults
+to `127.0.0.1`). The MCP endpoint is mounted at `/mcp`:
+
+```sh
+think-and-ship serve --http :8080
+# → think-and-ship http on http://127.0.0.1:8080/mcp
+```
+
+## Remote deployment
+
+The Streamable HTTP transport is meant for remote MCP clients (browser
+extensions, hosted agents, edge workers). Two env vars gate it for
+public-facing use; both default to safe loopback-only behavior.
+
+### Docker quickstart
+
+```sh
+docker build -f docs/deploy/Dockerfile -t think-and-ship:0.2.0 .
+docker run --rm -p 8080:8080 -v ts-data:/data think-and-ship:0.2.0
+# → think-and-ship http on http://0.0.0.0:8080/mcp
+```
+
+The image is a multi-stage `rust:1.88-slim` → `debian:bookworm-slim`
+build with a non-root `think` user and persistence on by default to
+`/data`. See [`docs/deploy/Dockerfile`](docs/deploy/Dockerfile) for the
+full build and verification commands.
+
+### Host validation (DNS-rebinding protection)
+
+By default the server only accepts requests whose `Host` header is
+`localhost`, `127.0.0.1`, or `::1` — the rmcp transport ships this
+protection against DNS-rebinding attacks against locally running MCP
+servers. Public deployments override the list with their own hostnames:
+
+```sh
+THINK_AND_SHIP_HTTP_ALLOWED_HOSTS=mcp.example.com,mcp.example.com:8080
+```
+
+> ⚠️ The list **replaces** the default — if you want browsers on the
+> same machine to still hit `http://localhost:8080/mcp`, include
+> `localhost,127.0.0.1` explicitly:
+> `THINK_AND_SHIP_HTTP_ALLOWED_HOSTS=mcp.example.com,localhost,127.0.0.1`
+
+### CORS (browser MCP clients)
+
+Origin validation is **disabled** by default (the rmcp transport ignores
+the `Origin` header when the allowlist is empty), which is the right call
+for non-browser clients. Browser-based MCP clients send `Origin`, so you
+need to enumerate the ones you trust:
+
+```sh
+THINK_AND_SHIP_HTTP_ALLOWED_ORIGINS=https://app.example.com,http://localhost:5173
+```
+
+Entries must include the scheme. Requests carrying an `Origin` that
+isn't on the list are rejected; requests with no `Origin` (e.g. `curl`,
+non-browser SDKs) still pass.
+
+The server logs both lists at startup so you can confirm what was
+picked up:
+
+```
+http allowed hosts: ["mcp.example.com", "localhost", "127.0.0.1"]
+http allowed origins: ["https://app.example.com"]
+think-and-ship http on http://0.0.0.0:8080/mcp
+```
 
 ## Architecture
 
@@ -203,14 +271,16 @@ THINK_AND_SHIP_BROADCAST_PATH=~/.local/share/think-and-ship/broadcast.sock
 
 ## Environment variables
 
-| Variable                            | Default                                              | Effect                                                  |
-|-------------------------------------|------------------------------------------------------|---------------------------------------------------------|
-| `THINK_AND_SHIP_PERSIST`            | `false`                                              | Enable disk persistence                                 |
-| `THINK_AND_SHIP_DATA_DIR`           | `~/.local/share/think-and-ship/`                     | Override the XDG data root                              |
-| `THINK_AND_SHIP_BROADCAST_PATH`     | _(disabled)_                                         | Unix socket for live broadcast                          |
-| `THINK_AND_SHIP_PROJECT_NAME`       | _(from cwd)_                                         | Override project identity                               |
-| `THINK_AND_SHIP_AUTO_SESSION`       | `false`                                              | Default session id falls back to the stable `project_id` |
-| `THINK_AND_SHIP_DEFAULT_SESSION_ID` | _(unset)_                                            | Explicit session id override                            |
+| Variable                                | Default                                              | Effect                                                  |
+|-----------------------------------------|------------------------------------------------------|---------------------------------------------------------|
+| `THINK_AND_SHIP_PERSIST`                | `false`                                              | Enable disk persistence                                 |
+| `THINK_AND_SHIP_DATA_DIR`               | `~/.local/share/think-and-ship/`                     | Override the XDG data root                              |
+| `THINK_AND_SHIP_BROADCAST_PATH`         | _(disabled)_                                         | Unix socket for live broadcast                          |
+| `THINK_AND_SHIP_PROJECT_NAME`           | _(from cwd)_                                         | Override project identity                               |
+| `THINK_AND_SHIP_AUTO_SESSION`           | `false`                                              | Default session id falls back to the stable `project_id` |
+| `THINK_AND_SHIP_DEFAULT_SESSION_ID`     | _(unset)_                                            | Explicit session id override                            |
+| `THINK_AND_SHIP_HTTP_ALLOWED_HOSTS`     | `localhost,127.0.0.1,::1`                            | Comma-separated `Host` allowlist for `--http`; replaces the loopback default |
+| `THINK_AND_SHIP_HTTP_ALLOWED_ORIGINS`   | _(disabled — `Origin` ignored)_                      | Comma-separated CORS allowlist for browser MCP clients; each entry must include scheme |
 
 Legacy `DELIBERATE_*` and `RESOLUTE_*` env vars are still accepted —
 the server logs one deprecation warning per legacy var seen and maps it
