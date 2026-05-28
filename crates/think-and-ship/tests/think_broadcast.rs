@@ -5,11 +5,11 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use think_and_ship::think::config::DeliberateConfig;
-use think_and_ship::think::engine::core::ReasoningServer;
-use think_and_ship::think::domain::{DeliberateStep, NextAction};
 use serde_json::Value;
 use tempfile::tempdir;
+use think_and_ship::think::config::DeliberateConfig;
+use think_and_ship::think::domain::{DeliberateStep, NextAction};
+use think_and_ship::think::engine::core::ReasoningServer;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::net::UnixStream;
 

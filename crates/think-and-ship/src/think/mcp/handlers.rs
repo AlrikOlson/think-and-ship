@@ -19,14 +19,14 @@ use rmcp::{
     tool, tool_router,
 };
 
+use super::args::{
+    BranchStatusArgs, ExportArgs, ImpactArgs, NoArgs, PinArgs, ReviseEstimateArgs, SearchArgs,
+    StatusArgs, StepLookupArgs,
+};
 use crate::think::config::OutputFormat;
 use crate::think::domain::DeliberateStep;
 use crate::think::output_schemas::{
     PinStepOutput, ReviseEstimateOutput, SearchTraceOutput, SetBranchStatusOutput, WipeTraceOutput,
-};
-use super::args::{
-    BranchStatusArgs, ExportArgs, ImpactArgs, NoArgs, PinArgs, ReviseEstimateArgs, SearchArgs,
-    StatusArgs, StepLookupArgs,
 };
 
 use super::service::ThinkService;

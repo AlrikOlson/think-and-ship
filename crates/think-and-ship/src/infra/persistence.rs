@@ -130,7 +130,9 @@ impl Persistence {
         }
         let path = self.path_for(session_id);
         match fs::read_to_string(&path) {
-            Ok(s) => Ok(Some(serde_json::from_str(&s).map_err(std::io::Error::other)?)),
+            Ok(s) => Ok(Some(
+                serde_json::from_str(&s).map_err(std::io::Error::other)?,
+            )),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
             Err(e) => Err(e),
         }

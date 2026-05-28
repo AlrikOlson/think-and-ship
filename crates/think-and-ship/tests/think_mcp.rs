@@ -8,17 +8,17 @@
 
 use std::collections::BTreeSet;
 
+use rmcp::handler::server::wrapper::Parameters;
+use rmcp::model::CallToolResult;
 use think_and_ship::think::config::DeliberateConfig;
-use think_and_ship::think::output_schemas::output_schema_for;
-use think_and_ship::think::engine::core::ReasoningServer;
-use think_and_ship::think::mcp::service::ThinkService;
 use think_and_ship::think::domain::{DeliberateStep, NextAction};
+use think_and_ship::think::engine::core::ReasoningServer;
 use think_and_ship::think::mcp::args::{
     ExportArgs, ImpactArgs, NoArgs, PinArgs, ReviseEstimateArgs, SearchArgs, StatusArgs,
     StepLookupArgs,
 };
-use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::CallToolResult;
+use think_and_ship::think::mcp::service::ThinkService;
+use think_and_ship::think::output_schemas::output_schema_for;
 
 fn svc() -> ThinkService {
     let mut cfg = DeliberateConfig::default();
@@ -305,9 +305,7 @@ async fn engine_status_call_returns_structured_content() {
 #[tokio::test]
 async fn get_step_call_returns_structured_step() {
     let s = svc();
-    s.think_record_step(Parameters(base_step(1)))
-        .await
-        .unwrap();
+    s.think_record_step(Parameters(base_step(1))).await.unwrap();
     let result = s
         .think_get_step(Parameters(StepLookupArgs {
             step_number: 1,
@@ -339,9 +337,7 @@ async fn get_step_missing_emits_structured_error_envelope() {
 #[tokio::test]
 async fn pin_step_call_returns_structured() {
     let s = svc();
-    s.think_record_step(Parameters(base_step(1)))
-        .await
-        .unwrap();
+    s.think_record_step(Parameters(base_step(1))).await.unwrap();
     let result = s
         .think_pin_step(Parameters(PinArgs {
             step_number: 1,
@@ -358,9 +354,7 @@ async fn pin_step_call_returns_structured() {
 #[tokio::test]
 async fn revise_estimate_call_returns_structured() {
     let s = svc();
-    s.think_record_step(Parameters(base_step(1)))
-        .await
-        .unwrap();
+    s.think_record_step(Parameters(base_step(1))).await.unwrap();
     let result = s
         .think_revise_estimate(Parameters(ReviseEstimateArgs {
             estimated_total: 7,
@@ -377,9 +371,7 @@ async fn revise_estimate_call_returns_structured() {
 #[tokio::test]
 async fn step_impact_call_returns_structured() {
     let s = svc();
-    s.think_record_step(Parameters(base_step(1)))
-        .await
-        .unwrap();
+    s.think_record_step(Parameters(base_step(1))).await.unwrap();
     let result = s
         .think_step_impact(Parameters(ImpactArgs { step_number: 1 }))
         .await
@@ -394,9 +386,7 @@ async fn step_impact_call_returns_structured() {
 #[tokio::test]
 async fn search_trace_call_returns_structured() {
     let s = svc();
-    s.think_record_step(Parameters(base_step(1)))
-        .await
-        .unwrap();
+    s.think_record_step(Parameters(base_step(1))).await.unwrap();
     let result = s
         .think_search_trace(Parameters(SearchArgs {
             query: "thought".into(),
@@ -412,9 +402,7 @@ async fn search_trace_call_returns_structured() {
 #[tokio::test]
 async fn trace_checkpoint_call_returns_structured() {
     let s = svc();
-    s.think_record_step(Parameters(base_step(1)))
-        .await
-        .unwrap();
+    s.think_record_step(Parameters(base_step(1))).await.unwrap();
     let result = s
         .think_trace_checkpoint(Parameters(NoArgs {}))
         .await
@@ -428,13 +416,8 @@ async fn trace_checkpoint_call_returns_structured() {
 #[tokio::test]
 async fn wipe_trace_call_returns_structured_and_clears() {
     let s = svc();
-    s.think_record_step(Parameters(base_step(1)))
-        .await
-        .unwrap();
-    let result = s
-        .think_wipe_trace(Parameters(NoArgs {}))
-        .await
-        .unwrap();
+    s.think_record_step(Parameters(base_step(1))).await.unwrap();
+    let result = s.think_wipe_trace(Parameters(NoArgs {})).await.unwrap();
     let sc = structured(&result);
     assert_eq!(sc["cleared"], true);
     // Engine should now be empty.
@@ -451,9 +434,7 @@ async fn export_trace_returns_text_no_structured_content() {
     // The one tool that intentionally returns format-dependent text:
     // structuredContent must be absent so clients know to treat as text.
     let s = svc();
-    s.think_record_step(Parameters(base_step(1)))
-        .await
-        .unwrap();
+    s.think_record_step(Parameters(base_step(1))).await.unwrap();
     let result = s
         .think_export_trace(Parameters(ExportArgs {
             format: Some("json".into()),

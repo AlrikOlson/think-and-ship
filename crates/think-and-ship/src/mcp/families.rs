@@ -196,7 +196,9 @@ mod tests {
     fn registers_and_dispatches_a_tool() {
         let mut reg = FamilyRegistry::new();
         reg.register(Box::new(EchoFamily));
-        let out = reg.dispatch("echo_repeat", serde_json::json!({"k": 1})).unwrap();
+        let out = reg
+            .dispatch("echo_repeat", serde_json::json!({"k": 1}))
+            .unwrap();
         assert_eq!(out, serde_json::json!({"k": 1}));
     }
 
@@ -204,7 +206,9 @@ mod tests {
     fn dispatch_resolves_aliases() {
         let mut reg = FamilyRegistry::new();
         reg.register(Box::new(EchoFamily));
-        let out = reg.dispatch("old_repeat", serde_json::json!({"hello": "world"})).unwrap();
+        let out = reg
+            .dispatch("old_repeat", serde_json::json!({"hello": "world"}))
+            .unwrap();
         assert_eq!(out, serde_json::json!({"hello": "world"}));
     }
 

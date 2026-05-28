@@ -61,10 +61,8 @@ impl ShipService {
                 tool.output_schema = Some(schema);
             }
         }
-        let aliases: Vec<rmcp::model::Tool> = tools
-            .iter()
-            .filter_map(Self::deprecated_alias_of)
-            .collect();
+        let aliases: Vec<rmcp::model::Tool> =
+            tools.iter().filter_map(Self::deprecated_alias_of).collect();
         tools.extend(aliases);
         tools
     }

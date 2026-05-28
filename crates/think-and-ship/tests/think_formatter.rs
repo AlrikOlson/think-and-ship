@@ -2,12 +2,12 @@
 
 use std::collections::BTreeMap;
 
-use think_and_ship::think::formatter::Formatter;
+use serde_json::json;
 use think_and_ship::think::domain::{
     Branch, BranchStatus, DeliberateHistory, DeliberateStep, HistoryMetadata, NextAction,
     StructuredAction,
 };
-use serde_json::json;
+use think_and_ship::think::formatter::Formatter;
 
 fn base_step() -> DeliberateStep {
     DeliberateStep {

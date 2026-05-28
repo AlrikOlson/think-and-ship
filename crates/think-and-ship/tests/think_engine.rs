@@ -1,11 +1,11 @@
 //! Mirrors `tests/server.test.ts`.
 
+use tempfile::TempDir;
 use think_and_ship::think::config::{
     DeliberateConfig, OutputFormat, PROJECT_SEP, namespace_session_id, resolve_project_id,
 };
-use think_and_ship::think::engine::core::{ProcessResult, ReasoningServer};
 use think_and_ship::think::domain::{DeliberateStep, NextAction, StructuredAction};
-use tempfile::TempDir;
+use think_and_ship::think::engine::core::{ProcessResult, ReasoningServer};
 
 /// Convenience: the namespaced form of `raw` under the current project.
 fn ns(raw: &str) -> String {
@@ -1737,8 +1737,8 @@ fn renumber_on_load_resolves_cross_session_duplicates() {
     // numbering (1, 2). Server construction must renumber them to a single
     // ascending sequence (1, 2, 3, 4) and rewrite any in-session
     // references so they still point at the right steps.
-    use think_and_ship::think::persistence::Persistence;
     use think_and_ship::think::domain::{DeliberateHistory, DepEdge, HistoryMetadata};
+    use think_and_ship::think::persistence::Persistence;
 
     let tmp = TempDir::new().unwrap();
     let project_id = resolve_project_id();
@@ -1846,8 +1846,8 @@ fn renumber_on_load_resolves_cross_session_duplicates() {
 fn renumber_on_load_is_idempotent_when_no_duplicates() {
     // Plant two sessions whose step_numbers are already globally unique
     // — server construction must leave them untouched.
-    use think_and_ship::think::persistence::Persistence;
     use think_and_ship::think::domain::{DeliberateHistory, HistoryMetadata};
+    use think_and_ship::think::persistence::Persistence;
 
     let tmp = TempDir::new().unwrap();
     let project_id = resolve_project_id();

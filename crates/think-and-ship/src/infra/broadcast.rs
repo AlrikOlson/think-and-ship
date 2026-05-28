@@ -104,7 +104,9 @@ impl std::fmt::Display for EmitError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Encode(e) => write!(f, "could not encode broadcast frame: {e}"),
-            Self::PayloadNotObject => write!(f, "broadcast payload must serialize to a JSON object"),
+            Self::PayloadNotObject => {
+                write!(f, "broadcast payload must serialize to a JSON object")
+            }
             Self::Closed => write!(f, "broadcaster channel is closed"),
         }
     }
@@ -127,7 +129,10 @@ async fn accept_loop(listener: UnixListener, clients: Arc<Mutex<Vec<UnixStream>>
     }
 }
 
-async fn fanout_loop(mut rx: mpsc::UnboundedReceiver<String>, clients: Arc<Mutex<Vec<UnixStream>>>) {
+async fn fanout_loop(
+    mut rx: mpsc::UnboundedReceiver<String>,
+    clients: Arc<Mutex<Vec<UnixStream>>>,
+) {
     while let Some(mut line) = rx.recv().await {
         line.push('\n');
         let bytes = line.as_bytes();
@@ -177,7 +182,8 @@ mod tests {
         let stream = UnixStream::connect(&sock).await.unwrap();
         let mut reader = BufReader::new(stream);
 
-        b.emit(Family::Think, &Sample { kind: "step", n: 7 }).unwrap();
+        b.emit(Family::Think, &Sample { kind: "step", n: 7 })
+            .unwrap();
 
         let mut line = String::new();
         tokio::time::timeout(Duration::from_secs(1), reader.read_line(&mut line))

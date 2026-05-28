@@ -19,8 +19,7 @@ fn round_trip_objective_and_tasks() {
     let project_id = "test-proj-abc123".to_string();
 
     {
-        let mut engine =
-            ShipEngine::new(project_id.clone()).with_persistence(persistence.clone());
+        let mut engine = ShipEngine::new(project_id.clone()).with_persistence(persistence.clone());
         engine.set_objective(
             "Build auth".into(),
             vec!["JWT works".into()],
@@ -107,8 +106,7 @@ fn action_ids_survive_restart() {
     let project_id = "test-ids".to_string();
 
     {
-        let mut engine =
-            ShipEngine::new(project_id.clone()).with_persistence(persistence.clone());
+        let mut engine = ShipEngine::new(project_id.clone()).with_persistence(persistence.clone());
         engine.set_objective("Goal".into(), vec![], vec![], String::new());
         engine.add_task("t1".into(), "Task".into(), TaskType::Implement, None, None);
         engine.start_task("t1").unwrap();

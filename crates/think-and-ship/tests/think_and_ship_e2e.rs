@@ -102,7 +102,11 @@ async fn resolute_ship_routes_to_ship_finalize() {
     let mut set_obj = CallToolRequestParams::new("resolute_set_objective");
     set_obj.arguments = Some(args);
     let result = client_service.peer().call_tool(set_obj).await.unwrap();
-    assert_ne!(result.is_error, Some(true), "set_objective failed: {result:?}");
+    assert_ne!(
+        result.is_error,
+        Some(true),
+        "set_objective failed: {result:?}"
+    );
 
     // resolute_ship is the legacy non-1:1 rename whose canonical_of()
     // maps to ship_finalize. Round-trip success confirms the alias

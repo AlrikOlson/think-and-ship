@@ -61,10 +61,7 @@ pub fn migrate_v0_1_data(new_root: &Path) -> io::Result<MigrationReport> {
         .map(PathBuf::from)
         .unwrap_or_else(|| home.join(".local").join("share"));
 
-    let pairs: &[(&str, &str)] = &[
-        ("deliberate-mcp", "think"),
-        ("resolute-mcp", "ship"),
-    ];
+    let pairs: &[(&str, &str)] = &[("deliberate-mcp", "think"), ("resolute-mcp", "ship")];
 
     for (legacy_name, family) in pairs {
         let src = xdg_root.join(legacy_name).join("sessions");
@@ -107,7 +104,9 @@ fn write_marker(path: &Path) -> io::Result<()> {
 }
 
 fn home_dir() -> Option<PathBuf> {
-    env::var_os("HOME").map(PathBuf::from).filter(|p| !p.as_os_str().is_empty())
+    env::var_os("HOME")
+        .map(PathBuf::from)
+        .filter(|p| !p.as_os_str().is_empty())
 }
 
 #[cfg(test)]
@@ -181,8 +180,16 @@ mod tests {
         assert_eq!(report.moved, 2);
         assert_eq!(report.skipped, 0);
 
-        let think_file = new_root.path().join("think").join("sessions").join("alpha.json");
-        let ship_file = new_root.path().join("ship").join("sessions").join("alpha.json");
+        let think_file = new_root
+            .path()
+            .join("think")
+            .join("sessions")
+            .join("alpha.json");
+        let ship_file = new_root
+            .path()
+            .join("ship")
+            .join("sessions")
+            .join("alpha.json");
         assert!(think_file.exists(), "missing {}", think_file.display());
         assert!(ship_file.exists(), "missing {}", ship_file.display());
 

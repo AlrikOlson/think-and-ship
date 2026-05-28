@@ -212,14 +212,17 @@ pub fn load_config() -> DeliberateConfig {
         config.display.color_output = false;
     }
 
-    if let Some(v) = parse_int_env::<u64>(env::var("THINK_AND_SHIP_SESSION_TIMEOUT").ok().as_deref(), 1)
-    {
+    if let Some(v) = parse_int_env::<u64>(
+        env::var("THINK_AND_SHIP_SESSION_TIMEOUT").ok().as_deref(),
+        1,
+    ) {
         config.system.session_timeout = v;
     }
 
-    if let Some(v) =
-        parse_int_env::<u32>(env::var("THINK_AND_SHIP_MAX_BRANCH_DEPTH").ok().as_deref(), 1)
-    {
+    if let Some(v) = parse_int_env::<u32>(
+        env::var("THINK_AND_SHIP_MAX_BRANCH_DEPTH").ok().as_deref(),
+        1,
+    ) {
         config.system.max_branch_depth = v;
     }
 
@@ -227,9 +230,12 @@ pub fn load_config() -> DeliberateConfig {
         config.features.enable_sessions = true;
     }
 
-    if let Some(v) =
-        parse_int_env::<usize>(env::var("THINK_AND_SHIP_RECENT_STEPS_LIMIT").ok().as_deref(), 1)
-    {
+    if let Some(v) = parse_int_env::<usize>(
+        env::var("THINK_AND_SHIP_RECENT_STEPS_LIMIT")
+            .ok()
+            .as_deref(),
+        1,
+    ) {
         config.system.recent_steps_limit = v;
     }
 

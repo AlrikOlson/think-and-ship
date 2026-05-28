@@ -337,11 +337,7 @@ fn resolve_data_dir() -> Option<PathBuf> {
     if let Ok(xdg) = env::var("XDG_DATA_HOME") {
         let trimmed = xdg.trim();
         if !trimmed.is_empty() {
-            return Some(
-                PathBuf::from(trimmed)
-                    .join("think-and-ship")
-                    .join("think"),
-            );
+            return Some(PathBuf::from(trimmed).join("think-and-ship").join("think"));
         }
     }
     if let Ok(home) = env::var("HOME") {

@@ -31,8 +31,8 @@ use rmcp::{
     service::RequestContext,
 };
 
-use crate::think::output_schemas::{self, StructuredError};
 use crate::think::engine::core::ReasoningServer;
+use crate::think::output_schemas::{self, StructuredError};
 
 use super::instructions::SERVER_INSTRUCTIONS;
 
@@ -76,10 +76,8 @@ impl ThinkService {
                 tool.output_schema = Some(schema);
             }
         }
-        let aliases: Vec<rmcp::model::Tool> = tools
-            .iter()
-            .filter_map(Self::deprecated_alias_of)
-            .collect();
+        let aliases: Vec<rmcp::model::Tool> =
+            tools.iter().filter_map(Self::deprecated_alias_of).collect();
         tools.extend(aliases);
         tools
     }
@@ -91,11 +89,7 @@ impl ThinkService {
         let suffix = canonical.name.strip_prefix(TOOL_PREFIX)?;
         let mut alias = canonical.clone();
         alias.name = Cow::Owned(format!("{DEPRECATED_PREFIX}{suffix}"));
-        let mut meta = canonical
-            .meta
-            .clone()
-            .map(|m| m.0)
-            .unwrap_or_default();
+        let mut meta = canonical.meta.clone().map(|m| m.0).unwrap_or_default();
         meta.insert(
             "deprecation_warning".to_string(),
             serde_json::Value::String(DEPRECATION_WARNING.to_string()),

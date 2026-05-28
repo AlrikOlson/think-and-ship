@@ -32,7 +32,10 @@ fn lists_44_tools_with_both_canonicals_and_aliases() {
 
     let names: BTreeSet<String> = tools.iter().map(|t| t.name.to_string()).collect();
     let think_count = names.iter().filter(|n| n.starts_with("think_")).count();
-    let deliberate_count = names.iter().filter(|n| n.starts_with("deliberate_")).count();
+    let deliberate_count = names
+        .iter()
+        .filter(|n| n.starts_with("deliberate_"))
+        .count();
     let ship_count = names.iter().filter(|n| n.starts_with("ship_")).count();
     let resolute_count = names.iter().filter(|n| n.starts_with("resolute_")).count();
     assert_eq!(think_count, 11, "11 think_* tools");
@@ -68,9 +71,21 @@ fn aliases_carry_deprecation_warning() {
 #[test]
 fn route_of_classifies_tools_by_family() {
     use think_and_ship::mcp::UnifiedFamily;
-    assert_eq!(UnifiedService::route_of("think_record_step"), Some(UnifiedFamily::Think));
-    assert_eq!(UnifiedService::route_of("deliberate_record_step"), Some(UnifiedFamily::Think));
-    assert_eq!(UnifiedService::route_of("ship_set_objective"), Some(UnifiedFamily::Ship));
-    assert_eq!(UnifiedService::route_of("resolute_set_objective"), Some(UnifiedFamily::Ship));
+    assert_eq!(
+        UnifiedService::route_of("think_record_step"),
+        Some(UnifiedFamily::Think)
+    );
+    assert_eq!(
+        UnifiedService::route_of("deliberate_record_step"),
+        Some(UnifiedFamily::Think)
+    );
+    assert_eq!(
+        UnifiedService::route_of("ship_set_objective"),
+        Some(UnifiedFamily::Ship)
+    );
+    assert_eq!(
+        UnifiedService::route_of("resolute_set_objective"),
+        Some(UnifiedFamily::Ship)
+    );
     assert!(UnifiedService::route_of("audit_anything").is_none());
 }

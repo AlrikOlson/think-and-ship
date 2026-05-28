@@ -110,7 +110,10 @@ impl ServerHandler for UnifiedService {
             Some(Family::Think) => self.think.call_tool(request, context).await,
             Some(Family::Ship) => self.ship.call_tool(request, context).await,
             None => Err(ErrorData::invalid_params(
-                format!("unknown tool '{}'; expected a think_*, deliberate_*, ship_*, or resolute_* name", request.name),
+                format!(
+                    "unknown tool '{}'; expected a think_*, deliberate_*, ship_*, or resolute_* name",
+                    request.name
+                ),
                 None,
             )),
         }
@@ -123,10 +126,22 @@ mod tests {
 
     #[test]
     fn route_of_recognizes_all_four_prefixes() {
-        assert_eq!(UnifiedService::route_of("think_record_step"), Some(Family::Think));
-        assert_eq!(UnifiedService::route_of("deliberate_record_step"), Some(Family::Think));
-        assert_eq!(UnifiedService::route_of("ship_set_objective"), Some(Family::Ship));
-        assert_eq!(UnifiedService::route_of("resolute_set_objective"), Some(Family::Ship));
+        assert_eq!(
+            UnifiedService::route_of("think_record_step"),
+            Some(Family::Think)
+        );
+        assert_eq!(
+            UnifiedService::route_of("deliberate_record_step"),
+            Some(Family::Think)
+        );
+        assert_eq!(
+            UnifiedService::route_of("ship_set_objective"),
+            Some(Family::Ship)
+        );
+        assert_eq!(
+            UnifiedService::route_of("resolute_set_objective"),
+            Some(Family::Ship)
+        );
     }
 
     #[test]

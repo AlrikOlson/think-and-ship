@@ -4,5 +4,7 @@
 pub mod families;
 pub mod unified;
 
-pub use families::{AliasEntry, DispatchError, FamilyRegistry, ToolEntry, ToolFamily, ToolHandler, ToolResult};
+pub use families::{
+    AliasEntry, DispatchError, FamilyRegistry, ToolEntry, ToolFamily, ToolHandler, ToolResult,
+};
 pub use unified::{Family as UnifiedFamily, UnifiedService};
