@@ -31,12 +31,15 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "serd
 owo-colors = "4"
 uuid = { version = "1", features = ["v4"] }
 thiserror = "2"
-rmcp = { version = "1.7", features = ["server", "transport-io", "macros", "schemars"] }
+rmcp = { version = "1.7", features = ["server", "transport-io", "transport-streamable-http-server", "macros", "schemars"] }
+axum = "0.8"
+tokio-util = { version = "0.7", features = ["rt"] }
 
 [dev-dependencies]
 tempfile = "3"
 pretty_assertions = "1"
-# rmcp client feature is dev-only — it's used by the e2e test to drive
-# the server over a tokio::io::duplex transport. The runtime crate
-# itself only exposes the server side.
-rmcp = { version = "1.7", features = ["client"] }
+# rmcp client feature is dev-only — it's used by the e2e tests to drive
+# the server over a tokio::io::duplex transport (think_and_ship_e2e) and
+# over a real TCP socket via Streamable HTTP (http_transport).
+rmcp = { version = "1.7", features = ["client", "transport-streamable-http-client-reqwest"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }

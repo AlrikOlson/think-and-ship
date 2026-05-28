@@ -1,17 +1,31 @@
 //! CLI subcommand handlers.
 
-use anyhow::{Result, bail};
-use rmcp::{ServiceExt, transport::io::stdio};
+use std::net::SocketAddr;
+use std::sync::Arc;
+
+use anyhow::{Context, Result};
+use rmcp::{
+    ServiceExt,
+    transport::{
+        io::stdio,
+        streamable_http_server::{
+            StreamableHttpServerConfig, StreamableHttpService, session::local::LocalSessionManager,
+        },
+    },
+};
+use tokio_util::sync::CancellationToken;
 use tracing_subscriber::EnvFilter;
 
-use crate::infra::{Broadcaster as EngineBroadcaster, PersistenceConfig as InfraPersistenceConfig};
 use crate::env_compat::translate_legacy_env_vars;
+use crate::infra::{Broadcaster as EngineBroadcaster, PersistenceConfig as InfraPersistenceConfig};
 use crate::mcp::UnifiedService;
 use crate::migrate::migrate_v0_1_data;
 use crate::ship::ShipService;
 use crate::ship::broadcast::Broadcaster as ShipBroadcaster;
 use crate::ship::engine::ShipEngine;
-use crate::ship::persistence::{Persistence as ShipPersistence, PersistenceConfig as ShipPersistenceConfig};
+use crate::ship::persistence::{
+    Persistence as ShipPersistence, PersistenceConfig as ShipPersistenceConfig,
+};
 use crate::think::ThinkService;
 use crate::think::broadcast::Broadcaster as ThinkBroadcaster;
 use crate::think::config::load_config as load_think_config;
@@ -19,11 +33,11 @@ use crate::think::engine::core::ReasoningServer;
 
 const UNIMPLEMENTED: &str = "think-and-ship: command not yet implemented.";
 
-pub fn serve(http: Option<String>) -> Result<()> {
-    if http.is_some() {
-        bail!("Streamable HTTP transport is not implemented yet; use stdio (omit --http).");
-    }
+/// Default bind address when `--http` is passed without a value or with just a
+/// port suffix (`:8080`).
+const DEFAULT_HTTP_HOST: &str = "127.0.0.1";
 
+pub fn serve(http: Option<String>) -> Result<()> {
     init_tracing();
     let translated = translate_legacy_env_vars();
     if !translated.is_empty() {
@@ -51,10 +65,25 @@ pub fn serve(http: Option<String>) -> Result<()> {
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()?
-        .block_on(run_server())
+        .block_on(async move {
+            let (unified, project_id) = build_unified()?;
+            let pkg_name = env!("CARGO_PKG_NAME");
+            let pkg_version = env!("CARGO_PKG_VERSION");
+            eprintln!("{pkg_name} {pkg_version} (project: {project_id})");
+
+            match http {
+                None => run_stdio(unified).await,
+                Some(spec) => {
+                    let addr = parse_http_addr(&spec)?;
+                    run_http(addr, unified).await
+                }
+            }
+        })
 }
 
-async fn run_server() -> Result<()> {
+/// Build the unified MCP service from env-driven config. Returns the service
+/// alongside the resolved project id so the caller can print a banner.
+fn build_unified() -> Result<(UnifiedService, String)> {
     let mut think_config = load_think_config();
 
     // Spawn the broadcast socket ONCE so both families share a single
@@ -91,12 +120,10 @@ async fn run_server() -> Result<()> {
     }
     let ship_service = ShipService::new(ship_engine);
 
-    let unified = UnifiedService::new(think_service, ship_service);
+    Ok((UnifiedService::new(think_service, ship_service), project_id))
+}
 
-    let pkg_name = env!("CARGO_PKG_NAME");
-    let pkg_version = env!("CARGO_PKG_VERSION");
-    eprintln!("{pkg_name} {pkg_version} (project: {project_id})");
-
+async fn run_stdio(unified: UnifiedService) -> Result<()> {
     let (stdin, stdout) = stdio();
     let running = unified.serve((stdin, stdout)).await?;
     eprintln!("think-and-ship running on stdio");
@@ -104,11 +131,57 @@ async fn run_server() -> Result<()> {
     Ok(())
 }
 
+async fn run_http(addr: SocketAddr, unified: UnifiedService) -> Result<()> {
+    let ct = CancellationToken::new();
+    let http_service = StreamableHttpService::new(
+        move || Ok::<_, std::io::Error>(unified.clone()),
+        Arc::new(LocalSessionManager::default()),
+        StreamableHttpServerConfig::default().with_cancellation_token(ct.child_token()),
+    );
+
+    let router = axum::Router::new().nest_service("/mcp", http_service);
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .with_context(|| format!("binding HTTP listener on {addr}"))?;
+    let bound = listener
+        .local_addr()
+        .with_context(|| "reading bound HTTP local_addr")?;
+    eprintln!("think-and-ship http on http://{bound}/mcp");
+
+    axum::serve(listener, router)
+        .with_graceful_shutdown(async move {
+            let _ = tokio::signal::ctrl_c().await;
+            ct.cancel();
+        })
+        .await?;
+    Ok(())
+}
+
+/// Accept three input shapes:
+/// - `:8080`         → `127.0.0.1:8080`
+/// - `8080`          → `127.0.0.1:8080`
+/// - `host:port`     → parsed as-is
+fn parse_http_addr(spec: &str) -> Result<SocketAddr> {
+    let spec = spec.trim();
+    let normalized = if let Some(port) = spec.strip_prefix(':') {
+        format!("{DEFAULT_HTTP_HOST}:{port}")
+    } else if spec.parse::<u16>().is_ok() {
+        format!("{DEFAULT_HTTP_HOST}:{spec}")
+    } else {
+        spec.to_string()
+    };
+    normalized.parse().with_context(|| {
+        format!("invalid --http address {spec:?} (expected host:port, :port, or port)")
+    })
+}
+
 fn init_tracing() {
     // Best-effort: if a global subscriber is already installed (e.g. by
     // tests), don't fail.
     let _ = tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn")))
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("warn")),
+        )
         .with_writer(std::io::stderr)
         .with_ansi(false)
         .try_init();
@@ -132,4 +205,32 @@ pub fn status() -> Result<()> {
 pub fn export(_format: &str) -> Result<()> {
     println!("{UNIMPLEMENTED}");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_http_addr_accepts_full_host_port() {
+        let got = parse_http_addr("0.0.0.0:9000").unwrap();
+        assert_eq!(got.to_string(), "0.0.0.0:9000");
+    }
+
+    #[test]
+    fn parse_http_addr_accepts_colon_port_shorthand() {
+        let got = parse_http_addr(":8080").unwrap();
+        assert_eq!(got.to_string(), "127.0.0.1:8080");
+    }
+
+    #[test]
+    fn parse_http_addr_accepts_bare_port() {
+        let got = parse_http_addr("8080").unwrap();
+        assert_eq!(got.to_string(), "127.0.0.1:8080");
+    }
+
+    #[test]
+    fn parse_http_addr_rejects_garbage() {
+        assert!(parse_http_addr("not-an-address").is_err());
+    }
 }
