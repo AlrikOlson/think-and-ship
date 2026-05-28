@@ -48,8 +48,12 @@ These secrets/config must exist on the GitHub repo before the automation works:
   re-push the tag by hand to build binaries. The workflows fall back to
   `GITHUB_TOKEN` if the secret is absent (publish still happens; the cascade
   does not).
-- [ ] **`CARGO_REGISTRY_TOKEN` secret** — crates.io API token (already needed by
-  the old flow).
+  - **Quick setup (idempotent):** `docs/deploy/setup-release-plz-token.sh` —
+    opens the pre-filled PAT page, then sets the secret via `gh`. Re-running is
+    a no-op once it exists. Non-interactive: `RELEASE_PLZ_TOKEN=ghp_xxx
+    docs/deploy/setup-release-plz-token.sh`.
+- [ ] **`CARGO_REGISTRY_TOKEN` secret** — crates.io API token. Already configured
+  (set during the v0.1.x release prep); reused as-is by release-plz.
 - [ ] **`NPM_TOKEN` / npm provenance** — npm publish uses OIDC
   (`id-token: write`) in `publish-npm`; confirm the npm package is configured
   for trusted publishing or add a token.
