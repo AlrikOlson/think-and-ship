@@ -40,6 +40,16 @@ enum Command {
         #[arg(long, default_value = "markdown")]
         format: String,
     },
+    /// Promote git-native trace records from local/ (private) to sessions/
+    /// (team-shared, committed). Requires THINK_AND_SHIP_SYNC_TARGET=repo-git data.
+    Promote {
+        /// Session id whose records to promote (the JSONL filename stem).
+        #[arg(long, value_name = "ID")]
+        session: String,
+        /// Only promote the reasoning step with this number; omit to promote all.
+        #[arg(long, value_name = "N")]
+        step: Option<u32>,
+    },
 }
 
 fn main() -> Result<()> {
@@ -53,5 +63,6 @@ fn main() -> Result<()> {
         Command::Doctor => cli::doctor(),
         Command::Status => cli::status(),
         Command::Export { format } => cli::export(&format),
+        Command::Promote { session, step } => cli::promote(&session, step),
     }
 }

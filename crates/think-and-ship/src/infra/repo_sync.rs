@@ -216,6 +216,14 @@ pub fn current_revision(repo_root: &Path) -> Option<String> {
     }
 }
 
+/// Result of [`RepoSink::promote`]: how many records moved from the local
+/// (gitignored) partition into the shared (committed) one, and how many stayed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PromoteOutcome {
+    pub promoted: usize,
+    pub kept: usize,
+}
+
 /// Writes Agent Trace JSONL into a repository's `.think-and-ship/` partitions
 /// and commits shared sessions. Cheap to clone (just a path).
 #[derive(Debug, Clone)]
@@ -294,6 +302,85 @@ impl RepoSink {
         f.write_all(line.as_bytes())?;
         f.sync_all()?;
         Ok(path)
+    }
+
+    /// Promote records from a session's `local/` (gitignored) partition into
+    /// its `sessions/` (committed) partition, flipping
+    /// `metadata["dev.thinkandship"].shared` to `true` on each.
+    ///
+    /// When `step` is `Some(n)`, only records whose
+    /// `metadata.dev.thinkandship.record.step_number == n` are promoted (the
+    /// per-step curation path); `None` promotes every record in the session.
+    /// Kept records are rewritten atomically (tmp + rename); the local file is
+    /// removed when empty. Does **not** commit — the promoted records are now in
+    /// the git-tracked `sessions/` file for the caller to commit (after the
+    /// pre-commit redaction hook runs).
+    pub fn promote(&self, session_id: &str, step: Option<u32>) -> std::io::Result<PromoteOutcome> {
+        let local_path = self
+            .trace_dir()
+            .join("local")
+            .join(format!("{session_id}.jsonl"));
+        let body = match std::fs::read_to_string(&local_path) {
+            Ok(s) => s,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                return Ok(PromoteOutcome {
+                    promoted: 0,
+                    kept: 0,
+                });
+            }
+            Err(e) => return Err(e),
+        };
+
+        let mut promoted: Vec<Value> = Vec::new();
+        let mut kept_lines: Vec<String> = Vec::new();
+        for line in body.lines() {
+            if line.trim().is_empty() {
+                continue;
+            }
+            let mut rec: Value = serde_json::from_str(line).map_err(std::io::Error::other)?;
+            let selected = match step {
+                None => true,
+                Some(n) => {
+                    rec.pointer("/metadata/dev.thinkandship/record/step_number")
+                        .and_then(Value::as_u64)
+                        == Some(u64::from(n))
+                }
+            };
+            if selected {
+                if let Some(ext) = rec
+                    .pointer_mut("/metadata/dev.thinkandship")
+                    .and_then(Value::as_object_mut)
+                {
+                    ext.insert("shared".into(), Value::Bool(true));
+                }
+                promoted.push(rec);
+            } else {
+                kept_lines.push(line.to_string());
+            }
+        }
+
+        // Append the promoted records to the shared partition.
+        for rec in &promoted {
+            self.append(session_id, true, rec)?;
+        }
+
+        // Rewrite the local file with the kept records, or remove it when empty.
+        if kept_lines.is_empty() {
+            if local_path.exists() {
+                std::fs::remove_file(&local_path)?;
+            }
+        } else {
+            let tmp = local_path.with_file_name(format!("{session_id}.jsonl.tmp"));
+            let mut content = kept_lines.join("\n");
+            content.push('\n');
+            std::fs::write(&tmp, content)?;
+            std::fs::rename(&tmp, &local_path)?;
+        }
+
+        Ok(PromoteOutcome {
+            promoted: promoted.len(),
+            kept: kept_lines.len(),
+        })
     }
 
     /// Stage and commit a shared session's JSONL file (plus the partition
@@ -599,6 +686,128 @@ mod tests {
         assert!(
             current_revision(tmp.path()).is_some(),
             "HEAD exists after commit"
+        );
+    }
+
+    // ── Promotion (local → shared) ───────────────────────────────────────
+
+    /// Append three local think steps (numbers 1,2,3) to session `s1`.
+    fn seed_local_steps(sink: &RepoSink) {
+        for n in 1..=3u32 {
+            let rec = ctx().build_record(
+                "think",
+                "step",
+                "s1",
+                false,
+                json!({ "step_number": n }),
+                vec![],
+            );
+            sink.append("s1", false, &rec).unwrap();
+        }
+    }
+
+    fn read_lines(path: &Path) -> Vec<Value> {
+        std::fs::read_to_string(path)
+            .map(|b| {
+                b.lines()
+                    .map(|l| serde_json::from_str(l).unwrap())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    #[test]
+    fn promote_single_step_moves_one_and_keeps_rest() {
+        let tmp = TempDir::new().unwrap();
+        let sink = RepoSink::new(tmp.path());
+        seed_local_steps(&sink);
+
+        let out = sink.promote("s1", Some(2)).unwrap();
+        assert_eq!(
+            out,
+            PromoteOutcome {
+                promoted: 1,
+                kept: 2
+            }
+        );
+
+        // Promoted record landed in sessions/ with shared flipped to true.
+        let shared = read_lines(&tmp.path().join(".think-and-ship/sessions/s1.jsonl"));
+        assert_eq!(shared.len(), 1);
+        assert_eq!(shared[0]["metadata"]["dev.thinkandship"]["shared"], true);
+        assert_eq!(
+            shared[0]["metadata"]["dev.thinkandship"]["record"]["step_number"],
+            2
+        );
+
+        // Kept records (1 and 3) survive in local/, untouched.
+        let local = read_lines(&tmp.path().join(".think-and-ship/local/s1.jsonl"));
+        let kept_steps: Vec<u64> = local
+            .iter()
+            .map(|r| {
+                r["metadata"]["dev.thinkandship"]["record"]["step_number"]
+                    .as_u64()
+                    .unwrap()
+            })
+            .collect();
+        assert_eq!(kept_steps, vec![1, 3]);
+    }
+
+    #[test]
+    fn promote_all_empties_local_and_removes_file() {
+        let tmp = TempDir::new().unwrap();
+        let sink = RepoSink::new(tmp.path());
+        seed_local_steps(&sink);
+
+        let out = sink.promote("s1", None).unwrap();
+        assert_eq!(
+            out,
+            PromoteOutcome {
+                promoted: 3,
+                kept: 0
+            }
+        );
+
+        assert_eq!(
+            read_lines(&tmp.path().join(".think-and-ship/sessions/s1.jsonl")).len(),
+            3
+        );
+        assert!(
+            !tmp.path().join(".think-and-ship/local/s1.jsonl").exists(),
+            "emptied local file is removed"
+        );
+    }
+
+    #[test]
+    fn promote_missing_session_is_noop() {
+        let tmp = TempDir::new().unwrap();
+        let sink = RepoSink::new(tmp.path());
+        let out = sink.promote("does-not-exist", None).unwrap();
+        assert_eq!(
+            out,
+            PromoteOutcome {
+                promoted: 0,
+                kept: 0
+            }
+        );
+    }
+
+    #[test]
+    fn promote_nonmatching_step_keeps_everything() {
+        let tmp = TempDir::new().unwrap();
+        let sink = RepoSink::new(tmp.path());
+        seed_local_steps(&sink);
+        let out = sink.promote("s1", Some(99)).unwrap();
+        assert_eq!(
+            out,
+            PromoteOutcome {
+                promoted: 0,
+                kept: 3
+            }
+        );
+        assert_eq!(
+            read_lines(&tmp.path().join(".think-and-ship/local/s1.jsonl")).len(),
+            3
         );
     }
 }

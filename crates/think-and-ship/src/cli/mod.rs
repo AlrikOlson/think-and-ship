@@ -285,6 +285,37 @@ pub fn export(_format: &str) -> Result<()> {
     Ok(())
 }
 
+/// Promote git-native trace records from the gitignored `local/` partition to
+/// the committed `sessions/` partition (Phase 23c). `step` filters to a single
+/// reasoning step number; omit it to promote the whole session. Does not commit
+/// — review + `git commit` (with the redaction hook) afterward.
+pub fn promote(session: &str, step: Option<u32>) -> Result<()> {
+    let cwd = std::env::current_dir().context("resolving current directory")?;
+    let root = discover_repo_root(&cwd)
+        .context("not inside a git repository — git-native traces require a repo")?;
+    let sink = RepoSink::new(root);
+    let out = sink
+        .promote(session, step)
+        .with_context(|| format!("promoting session {session}"))?;
+    match step {
+        Some(n) => println!(
+            "promoted {} record(s) for step {n} in session '{session}' ({} kept local)",
+            out.promoted, out.kept
+        ),
+        None => println!(
+            "promoted {} record(s) in session '{session}' ({} kept local)",
+            out.promoted, out.kept
+        ),
+    }
+    if out.promoted > 0 {
+        println!(
+            "→ review .think-and-ship/sessions/{session}.jsonl, then `git add` + commit \
+             (the pre-commit redaction hook will scan for secrets)."
+        );
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
