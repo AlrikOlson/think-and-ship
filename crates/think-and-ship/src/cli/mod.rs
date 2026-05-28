@@ -1,5 +1,6 @@
 //! CLI subcommand handlers.
 
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::Arc;
 
@@ -200,6 +201,13 @@ async fn run_http(addr: SocketAddr, unified: UnifiedService) -> Result<()> {
     );
 
     let router = axum::Router::new().nest_service("/mcp", http_service);
+    // Optional bearer-token auth (Phase 24a). Unset env var → no auth layer,
+    // so the default --http behaviour is unchanged.
+    let bearer = bearer_tokens_from_env();
+    if let Some(tokens) = &bearer {
+        eprintln!("http bearer auth: {} token(s) required", tokens.len());
+    }
+    let router = apply_bearer_auth(router, bearer);
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .with_context(|| format!("binding HTTP listener on {addr}"))?;
@@ -233,6 +241,67 @@ fn parse_csv_env(name: &str) -> Option<Vec<String>> {
     } else {
         Some(entries)
     }
+}
+
+/// Bearer-token allowlist from `THINK_AND_SHIP_HTTP_BEARER_TOKENS`
+/// (comma-separated). `None` when unset/empty — the caller then mounts no auth
+/// layer, preserving the open `--http` default.
+fn bearer_tokens_from_env() -> Option<HashSet<String>> {
+    Some(
+        parse_csv_env("THINK_AND_SHIP_HTTP_BEARER_TOKENS")?
+            .into_iter()
+            .collect(),
+    )
+}
+
+/// Decide whether an `Authorization` header value authorizes a request against
+/// the bearer allowlist. Accepts exactly `Bearer <token>` (scheme
+/// case-insensitive) whose `<token>` is in `allowed`; rejects a missing header,
+/// a non-Bearer scheme, an empty token, or an unknown token.
+fn is_authorized(auth_header: Option<&str>, allowed: &HashSet<String>) -> bool {
+    let Some(header) = auth_header else {
+        return false;
+    };
+    let mut parts = header.splitn(2, ' ');
+    let scheme = parts.next().unwrap_or("");
+    let token = parts.next().unwrap_or("").trim();
+    scheme.eq_ignore_ascii_case("bearer") && !token.is_empty() && allowed.contains(token)
+}
+
+/// Wrap `router` with a bearer-token gate when `tokens` is `Some`. Requests
+/// without a valid `Authorization: Bearer <token>` get `401` +
+/// `WWW-Authenticate: Bearer`. `None` returns the router unchanged.
+///
+/// `pub` so the HTTP e2e can exercise the real middleware.
+pub fn apply_bearer_auth(router: axum::Router, tokens: Option<HashSet<String>>) -> axum::Router {
+    use axum::extract::Request;
+    use axum::http::{StatusCode, header};
+    use axum::middleware::{Next, from_fn};
+    use axum::response::IntoResponse;
+
+    let Some(tokens) = tokens else {
+        return router;
+    };
+    let allowed = Arc::new(tokens);
+    router.layer(from_fn(move |req: Request, next: Next| {
+        let allowed = allowed.clone();
+        async move {
+            let header = req
+                .headers()
+                .get(header::AUTHORIZATION)
+                .and_then(|v| v.to_str().ok());
+            if is_authorized(header, &allowed) {
+                next.run(req).await
+            } else {
+                (
+                    StatusCode::UNAUTHORIZED,
+                    [(header::WWW_AUTHENTICATE, "Bearer")],
+                    "unauthorized\n",
+                )
+                    .into_response()
+            }
+        }
+    }))
 }
 
 /// Accept three input shapes:
@@ -341,6 +410,28 @@ mod tests {
     #[test]
     fn parse_http_addr_rejects_garbage() {
         assert!(parse_http_addr("not-an-address").is_err());
+    }
+
+    #[test]
+    fn is_authorized_enforces_bearer_allowlist() {
+        let allowed: HashSet<String> = ["good-token".to_string(), "second".to_string()]
+            .into_iter()
+            .collect();
+
+        // Accept: exact token, case-insensitive scheme.
+        assert!(is_authorized(Some("Bearer good-token"), &allowed));
+        assert!(is_authorized(Some("bearer second"), &allowed));
+        assert!(is_authorized(Some("BEARER good-token"), &allowed));
+
+        // Reject: missing header, wrong scheme, empty token, unknown token.
+        assert!(!is_authorized(None, &allowed));
+        assert!(!is_authorized(Some("Basic good-token"), &allowed));
+        assert!(!is_authorized(Some("Bearer "), &allowed));
+        assert!(!is_authorized(Some("good-token"), &allowed)); // no scheme
+        assert!(!is_authorized(Some("Bearer wrong"), &allowed));
+        // An empty allowlist authorizes nothing (but the layer isn't mounted
+        // when the env var is unset, so this never happens in practice).
+        assert!(!is_authorized(Some("Bearer good-token"), &HashSet::new()));
     }
 
     // Process env is shared — fold the four parse_csv_env scenarios into
