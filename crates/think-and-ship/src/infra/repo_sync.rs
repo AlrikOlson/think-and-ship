@@ -22,6 +22,7 @@ use uuid::Uuid;
 
 const ENV_SYNC_TARGET: &str = "THINK_AND_SHIP_SYNC_TARGET";
 const ENV_MODEL_ID: &str = "THINK_AND_SHIP_MODEL_ID";
+const ENV_SHARED: &str = "THINK_AND_SHIP_SHARED";
 /// The Agent Trace spec version this envelope conforms to.
 const AGENT_TRACE_VERSION: &str = "0.1.0";
 /// Reverse-domain extension key carrying our richer semantics.
@@ -61,6 +62,20 @@ impl SyncTarget {
             _ => Self::Local,
         }
     }
+}
+
+/// Session-level sharing default from `THINK_AND_SHIP_SHARED` (`true`/`1`).
+///
+/// `false` (the default) routes records to the gitignored `local/` partition;
+/// `true` routes them to the committed `sessions/` partition. Per-record
+/// promotion (`local` → `sessions`) is Phase 23c.
+pub fn shared_from_env() -> bool {
+    std::env::var(ENV_SHARED)
+        .map(|v| {
+            let v = v.trim().to_ascii_lowercase();
+            v == "true" || v == "1"
+        })
+        .unwrap_or(false)
 }
 
 /// Per-record context: the Agent Trace envelope fields the caller supplies.
@@ -202,7 +217,8 @@ pub fn current_revision(repo_root: &Path) -> Option<String> {
 }
 
 /// Writes Agent Trace JSONL into a repository's `.think-and-ship/` partitions
-/// and commits shared sessions.
+/// and commits shared sessions. Cheap to clone (just a path).
+#[derive(Debug, Clone)]
 pub struct RepoSink {
     repo_root: PathBuf,
 }
@@ -212,6 +228,12 @@ impl RepoSink {
         Self {
             repo_root: repo_root.into(),
         }
+    }
+
+    /// The repository root this sink writes under (used by callers to build a
+    /// [`RecordCtx`] resolving `HEAD` from the right repo).
+    pub fn repo_root(&self) -> &Path {
+        &self.repo_root
     }
 
     fn trace_dir(&self) -> PathBuf {

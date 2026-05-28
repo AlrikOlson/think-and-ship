@@ -296,6 +296,11 @@ impl ReasoningServer {
             }
         }
 
+        // Mirror the step into the git-native trace (Phase 23b) when a repo
+        // sink is attached. Fire-and-forget, exactly like the broadcaster:
+        // any error is logged and dropped so the tool path never fails.
+        self.mirror_step_to_repo();
+
         // Response is intentionally tight — the caller already has the step
         // it sent in its own context, so we don't echo `next_action`,
         // top-level `confidence`, or `completed: false` (those would be
@@ -400,6 +405,51 @@ impl ReasoningServer {
             text: serde_json::to_string_pretty(&Value::Object(response))
                 .unwrap_or_else(|_| "{}".into()),
         })
+    }
+
+    /// Mirror the most-recently-recorded step into the git-native trace
+    /// (Phase 23b) as an Agent Trace JSONL record. No-op when no `repo_sink`
+    /// is attached. Fire-and-forget: every failure is logged at WARN and
+    /// dropped so the `process_step` path is never affected. The session is
+    /// committed when the step closes the trace (`is_final_step`) and records
+    /// are `shared`.
+    fn mirror_step_to_repo(&self) {
+        let Some(sink) = &self.repo_sink else {
+            return;
+        };
+        let Some(stored) = self.history.steps.last() else {
+            return;
+        };
+        // One JSONL file per session; fall back to the project id when no
+        // named session is active so default-history steps still land somewhere.
+        let session_id = self
+            .active_session
+            .clone()
+            .unwrap_or_else(|| self.project_id.clone());
+
+        let payload = serde_json::to_value(stored).unwrap_or(Value::Null);
+        let ctx = crate::infra::RecordCtx::resolve(sink.repo_root());
+        // Reasoning steps attribute no code, so `files[]` is empty.
+        let record = ctx.build_record("think", "step", &session_id, self.repo_shared, payload, vec![]);
+
+        if let Err(e) = sink.append(&session_id, self.repo_shared, &record) {
+            tracing::warn!(
+                target: "think_and_ship::think::repo_sync",
+                "dropping git-native trace append: {e}",
+            );
+            return;
+        }
+
+        // Commit on session close, but only for the shared (committed)
+        // partition — the local partition is gitignored.
+        if self.repo_shared && stored.is_final_step == Some(true) {
+            if let Err(e) = sink.commit_session(&session_id) {
+                tracing::warn!(
+                    target: "think_and_ship::think::repo_sync",
+                    "git-native trace commit failed: {e}",
+                );
+            }
+        }
     }
 
     /// Soft, non-fatal advisories about the just-recorded step.

@@ -63,6 +63,15 @@ pub struct ReasoningServer {
     /// caller-supplied session id and stamped into each session's
     /// metadata so the viewer can group without parsing.
     pub(crate) project_id: String,
+    /// Optional git-native trace sink. When set (SyncTarget::RepoGit + the
+    /// process runs inside a repo), every recorded step is mirrored as an
+    /// Agent Trace JSONL record into `.think-and-ship/` and the session is
+    /// committed on close. `None` = the default Local behaviour. Writes are
+    /// fire-and-forget — a sink error never fails `process_step`.
+    pub(crate) repo_sink: Option<crate::infra::RepoSink>,
+    /// Whether mirrored records are `shared` (committed `sessions/`) vs
+    /// `local` (gitignored). Default `false`. Only meaningful with `repo_sink`.
+    pub(crate) repo_shared: bool,
 }
 
 impl ReasoningServer {
@@ -72,6 +81,17 @@ impl ReasoningServer {
     /// underlying socket.
     pub fn with_broadcaster(mut self, broadcaster: Broadcaster) -> Self {
         self.broadcaster = Some(broadcaster);
+        self
+    }
+
+    /// Attach a git-native trace sink so recorded steps are mirrored into the
+    /// repo's `.think-and-ship/` as Agent Trace JSONL. `shared` selects the
+    /// committed `sessions/` partition (`true`) vs the gitignored `local/`
+    /// partition (`false`). Wired by `cli::build_unified` when
+    /// `THINK_AND_SHIP_SYNC_TARGET=repo-git` and the process is inside a repo.
+    pub fn with_repo_sink(mut self, sink: crate::infra::RepoSink, shared: bool) -> Self {
+        self.repo_sink = Some(sink);
+        self.repo_shared = shared;
         self
     }
 
@@ -187,6 +207,8 @@ impl ReasoningServer {
             broadcaster,
             cwd,
             project_id,
+            repo_sink: None,
+            repo_shared: false,
         }
     }
 
@@ -249,6 +271,9 @@ impl ReasoningServer {
             // fine. Any path that would consult it (process_step) is
             // not reachable from a viewer-side `for_analysis` server.
             project_id: String::new(),
+            // Read-only view: never mirrors to a repo.
+            repo_sink: None,
+            repo_shared: false,
         }
     }
 
