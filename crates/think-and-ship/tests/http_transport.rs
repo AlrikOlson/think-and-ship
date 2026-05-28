@@ -106,3 +106,88 @@ async fn http_deliberate_alias_dispatches_to_think_canonical() {
     let _ = client.cancel().await;
     ct.cancel();
 }
+
+// ── Bearer-token auth (Phase 24a) ────────────────────────────────────────────
+
+/// Spawn the unified server wrapped with `apply_bearer_auth(tokens)` — the same
+/// middleware `cli::run_http` mounts — on an ephemeral port. Returns the bound
+/// address + its shutdown token.
+async fn spawn_http_server_with_auth(
+    tokens: std::collections::HashSet<String>,
+) -> (std::net::SocketAddr, CancellationToken) {
+    let unified = build_unified();
+    let ct = CancellationToken::new();
+    let service = StreamableHttpService::new(
+        move || Ok::<_, std::io::Error>(unified.clone()),
+        Arc::new(LocalSessionManager::default()),
+        StreamableHttpServerConfig::default().with_cancellation_token(ct.child_token()),
+    );
+    let router = axum::Router::new().nest_service("/mcp", service);
+    let router = think_and_ship::cli::apply_bearer_auth(router, Some(tokens));
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn({
+        let ct = ct.clone();
+        async move {
+            let _ = axum::serve(listener, router)
+                .with_graceful_shutdown(async move { ct.cancelled_owned().await })
+                .await;
+        }
+    });
+    (addr, ct)
+}
+
+/// Minimal raw HTTP/1.1 `POST /mcp` so we can control the `Authorization`
+/// header directly; returns the numeric status code from the status line.
+async fn raw_post_mcp_status(addr: std::net::SocketAddr, bearer: Option<&str>) -> u16 {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let mut stream = tokio::net::TcpStream::connect(addr).await.unwrap();
+    let auth = match bearer {
+        Some(tok) => format!("Authorization: Bearer {tok}\r\n"),
+        None => String::new(),
+    };
+    let req = format!(
+        "POST /mcp HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Type: application/json\r\n\
+         Accept: application/json, text/event-stream\r\nContent-Length: 0\r\n\
+         {auth}Connection: close\r\n\r\n"
+    );
+    stream.write_all(req.as_bytes()).await.unwrap();
+    stream.flush().await.unwrap();
+
+    let mut buf = Vec::new();
+    stream.read_to_end(&mut buf).await.unwrap();
+    let text = String::from_utf8_lossy(&buf);
+    // Status line: "HTTP/1.1 <code> <reason>"
+    text.lines()
+        .next()
+        .and_then(|l| l.split_whitespace().nth(1))
+        .and_then(|c| c.parse::<u16>().ok())
+        .unwrap_or(0)
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn http_bearer_auth_gates_requests() {
+    let tokens: std::collections::HashSet<String> = ["s3cret".to_string()].into_iter().collect();
+    let (addr, ct) = spawn_http_server_with_auth(tokens).await;
+
+    // No header → 401.
+    assert_eq!(
+        raw_post_mcp_status(addr, None).await,
+        401,
+        "missing token must 401"
+    );
+    // Wrong token → 401.
+    assert_eq!(
+        raw_post_mcp_status(addr, Some("nope")).await,
+        401,
+        "wrong token must 401"
+    );
+    // Correct token → auth passes (the MCP service then handles the request;
+    // whatever it returns, it must NOT be 401).
+    let ok = raw_post_mcp_status(addr, Some("s3cret")).await;
+    assert_ne!(ok, 401, "valid token must pass the auth gate (got {ok})");
+
+    ct.cancel();
+}

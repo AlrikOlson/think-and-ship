@@ -192,6 +192,25 @@ build with a non-root `think` user and persistence on by default to
 `/data`. See [`docs/deploy/Dockerfile`](docs/deploy/Dockerfile) for the
 full build and verification commands.
 
+### Authentication (bearer tokens)
+
+By default the `--http` listener is **unauthenticated** — host/CORS validation
+guard against DNS-rebinding, not against unauthorized callers. For any
+non-loopback deployment, require a bearer token:
+
+```sh
+THINK_AND_SHIP_HTTP_BEARER_TOKENS=tok_alice,tok_bob   # comma-separated allowlist
+```
+
+When set, every request needs `Authorization: Bearer <token>` with a token from
+the list; anything else gets `401 Unauthorized` (with `WWW-Authenticate: Bearer`)
+before reaching the MCP handler. Unset → no auth layer (the listener stays open).
+Point clients at the server with the header configured in their MCP transport.
+
+> This is transport-level shared-secret auth, suitable behind your own TLS /
+> reverse proxy. Full OAuth (rmcp's `auth` feature) lands with the
+> `2026-07-28` spec work — see the roadmap.
+
 ### Host validation (DNS-rebinding protection)
 
 By default the server only accepts requests whose `Host` header is
@@ -373,6 +392,7 @@ THINK_AND_SHIP_BROADCAST_PATH=~/.local/share/think-and-ship/broadcast.sock
 | `THINK_AND_SHIP_DEFAULT_SESSION_ID`     | _(unset)_                                            | Explicit session id override                            |
 | `THINK_AND_SHIP_HTTP_ALLOWED_HOSTS`     | `localhost,127.0.0.1,::1`                            | Comma-separated `Host` allowlist for `--http`; replaces the loopback default |
 | `THINK_AND_SHIP_HTTP_ALLOWED_ORIGINS`   | _(disabled — `Origin` ignored)_                      | Comma-separated CORS allowlist for browser MCP clients; each entry must include scheme |
+| `THINK_AND_SHIP_HTTP_BEARER_TOKENS`     | _(disabled — no auth)_                               | Comma-separated bearer-token allowlist for `--http`; requests need `Authorization: Bearer <token>` or get 401 |
 | `THINK_AND_SHIP_SYNC_TARGET`            | `local`                                              | `repo-git` also mirrors traces into `<repo>/.think-and-ship/` (see [Sharing traces](#sharing-traces-with-your-team)) |
 | `THINK_AND_SHIP_SHARED`                 | `false`                                              | With `repo-git`, write to the committed `sessions/` partition vs the gitignored `local/` |
 | `THINK_AND_SHIP_MODEL_ID`               | _(unset)_                                            | models.dev `provider/model` id used for Agent Trace code attribution |
