@@ -291,12 +291,15 @@ commit on a hit. Add project-specific patterns via
 keeping:
 
 ```sh
-think-and-ship promote --session my-project-a1b2c3 --step 7   # one step
-think-and-ship promote --session my-project-a1b2c3            # whole session
+think-and-ship promote --session my-project-a1b2c3 --step 7        # one think step
+think-and-ship promote --session my-project-a1b2c3 --kind action   # all ship code actions
+think-and-ship promote --session my-project-a1b2c3                 # whole session
 ```
 
-`promote` moves records from `local/` to `sessions/` (flipping `shared: true`)
-and leaves the rest untouched. It doesn't commit — review the result, then
+`--step <n>` selects a think reasoning step by number; `--kind
+<step|objective|task|action|check>` selects ship (or think) records by kind —
+the two filters combine (AND). `promote` moves the matching records from
+`local/` to `sessions/` (flipping `shared: true`) and leaves the rest untouched. It doesn't commit — review the result, then
 `git add` + commit (the hook scans on the way out).
 
 > **Layout & rationale** — one file per session, one commit per session (never
