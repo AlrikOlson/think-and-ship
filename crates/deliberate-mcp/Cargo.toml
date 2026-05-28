@@ -32,9 +32,3 @@ uuid = { version = "1", features = ["v4"] }
 pretty_assertions = "1"
 tempfile = "3"
 
-[profile.release]
-lto = "thin"
-codegen-units = 1
-strip = true
-
-
