@@ -123,6 +123,7 @@ The generated config — **one entry**, not two:
 | `think-and-ship init --force`        | Overwrite existing config                     |
 | `think-and-ship doctor`              | Diagnose setup issues                         |
 | `think-and-ship status`              | Project info + config state                   |
+| `think-and-ship promote --session <id> [--step <n>]` | Promote local traces to the shared partition (see below) |
 | `think-and-ship --check`             | Verify the binary is installed                |
 | `think-and-ship --version`           | Show version info                             |
 
@@ -231,6 +232,59 @@ http allowed origins: ["https://app.example.com"]
 think-and-ship http on http://0.0.0.0:8080/mcp
 ```
 
+## Sharing traces with your team
+
+think-and-ship can mirror its reasoning + execution traces **into your repo**
+under `.think-and-ship/`, as a strict superset of the
+[Agent Trace](https://agent-trace.dev/) standard — so the team accumulates
+git-native AI Decision Records and generic Agent Trace tooling reads them too.
+Full wire format: [`docs/SCHEMA.md`](docs/SCHEMA.md).
+
+**1. Turn it on** (in your MCP config `env`, or the shell):
+
+```sh
+export THINK_AND_SHIP_SYNC_TARGET=repo-git   # mirror into <repo>/.think-and-ship/
+export THINK_AND_SHIP_SHARED=true            # write to the committed partition
+# optional: attribute code authorship to your model (models.dev convention)
+export THINK_AND_SHIP_MODEL_ID=anthropic/claude-opus-4-8
+```
+
+Records stream to `<repo>/.think-and-ship/sessions/<session>.jsonl` and the
+server makes **one commit per session** on close (`is_final_step` /
+`ship_finalize`). With `THINK_AND_SHIP_SHARED` unset (the default), records go
+to the **gitignored** `.think-and-ship/local/` partition instead — private
+until you choose to share them.
+
+**2. Install the redaction hook** — reasoning traces can contain pasted
+secrets, so scan before committing:
+
+```sh
+git config core.hooksPath docs/deploy/hooks      # or symlink the single hook:
+# ln -sf ../../docs/deploy/hooks/pre-commit .git/hooks/pre-commit
+```
+
+The hook runs [TruffleHog](https://github.com/trufflesecurity/trufflehog) (if
+installed) plus a regex pass over staged `.think-and-ship/` files and blocks the
+commit on a hit. Add project-specific patterns via
+`THINK_AND_SHIP_REDACT_PATTERNS` (comma-separated regexes).
+
+**3. Promote local scratch to the team** when a private record is worth
+keeping:
+
+```sh
+think-and-ship promote --session my-project-a1b2c3 --step 7   # one step
+think-and-ship promote --session my-project-a1b2c3            # whole session
+```
+
+`promote` moves records from `local/` to `sessions/` (flipping `shared: true`)
+and leaves the rest untouched. It doesn't commit — review the result, then
+`git add` + commit (the hook scans on the way out).
+
+> **Layout & rationale** — one file per session, one commit per session (never
+> per step: at 100 sessions/day × 5 devs × 50 steps, per-step commits would be
+> ~25k/day). See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) →
+> *Git-native shared traces*.
+
 ## Architecture
 
 For the full design contract — crate layout, `ToolFamily` trait, typed
@@ -319,6 +373,10 @@ THINK_AND_SHIP_BROADCAST_PATH=~/.local/share/think-and-ship/broadcast.sock
 | `THINK_AND_SHIP_DEFAULT_SESSION_ID`     | _(unset)_                                            | Explicit session id override                            |
 | `THINK_AND_SHIP_HTTP_ALLOWED_HOSTS`     | `localhost,127.0.0.1,::1`                            | Comma-separated `Host` allowlist for `--http`; replaces the loopback default |
 | `THINK_AND_SHIP_HTTP_ALLOWED_ORIGINS`   | _(disabled — `Origin` ignored)_                      | Comma-separated CORS allowlist for browser MCP clients; each entry must include scheme |
+| `THINK_AND_SHIP_SYNC_TARGET`            | `local`                                              | `repo-git` also mirrors traces into `<repo>/.think-and-ship/` (see [Sharing traces](#sharing-traces-with-your-team)) |
+| `THINK_AND_SHIP_SHARED`                 | `false`                                              | With `repo-git`, write to the committed `sessions/` partition vs the gitignored `local/` |
+| `THINK_AND_SHIP_MODEL_ID`               | _(unset)_                                            | models.dev `provider/model` id used for Agent Trace code attribution |
+| `THINK_AND_SHIP_REDACT_PATTERNS`        | _(defaults only)_                                    | Comma-separated extra regexes for the pre-commit redaction hook |
 
 Legacy `DELIBERATE_*` and `RESOLUTE_*` env vars are still accepted —
 the server logs one deprecation warning per legacy var seen and maps it

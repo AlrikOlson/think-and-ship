@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+# think-and-ship pre-commit redaction hook (Phase 23c).
+#
+# Scans STAGED files under `.think-and-ship/` for secrets before they can be
+# committed into your team-shared reasoning/execution traces. Blocks the commit
+# (exit 1) if anything looks sensitive. Reasoning traces can contain pasted
+# prompts with credentials that generic scanners miss, so this runs two passes:
+#
+#   1. trufflehog (if installed) — verified-secret detection.
+#   2. a configurable regex pass — set THINK_AND_SHIP_REDACT_PATTERNS to a
+#      comma-separated list of extended-regex patterns to add to the defaults.
+#
+# INSTALL (choose one):
+#   # symlink into this repo's hooks
+#   ln -sf ../../docs/deploy/hooks/pre-commit .git/hooks/pre-commit
+#   # or point git at a shared hooks dir
+#   git config core.hooksPath docs/deploy/hooks
+#
+# SKIP for one commit (use sparingly): git commit --no-verify
+set -euo pipefail
+
+trace_prefix=".think-and-ship/"
+
+# Staged (added/copied/modified) files under the trace dir. Built with a
+# read-loop (not `mapfile`) so the hook runs on macOS's stock bash 3.2.
+staged=()
+while IFS= read -r line; do
+  [ -n "$line" ] && staged+=("$line")
+done < <(git diff --cached --name-only --diff-filter=ACM -- "$trace_prefix")
+if [ "${#staged[@]}" -eq 0 ]; then
+  exit 0
+fi
+
+fail=0
+
+# ── Pass 1: trufflehog (optional) ────────────────────────────────────────────
+if command -v trufflehog >/dev/null 2>&1; then
+  # Scan the working-tree copies of the staged files; --fail returns non-zero
+  # when verified secrets are found.
+  if ! trufflehog filesystem "${staged[@]}" --no-update --fail >/dev/null 2>&1; then
+    echo "pre-commit: trufflehog flagged a secret in staged .think-and-ship/ files." >&2
+    fail=1
+  fi
+else
+  echo "pre-commit: trufflehog not found — running regex pass only." \
+       "Install https://github.com/trufflesecurity/trufflehog for stronger coverage." >&2
+fi
+
+# ── Pass 2: regex pass (always) ──────────────────────────────────────────────
+# Defaults cover the highest-signal credential shapes; extend via the env var.
+default_patterns=(
+  'AKIA[0-9A-Z]{16}'                              # AWS access key id
+  '-----BEGIN [A-Z ]*PRIVATE KEY-----'            # PEM private keys
+  '(?i)bearer[[:space:]]+[a-z0-9._-]{20,}'        # bearer tokens
+  'gh[pousr]_[A-Za-z0-9]{36,}'                     # GitHub tokens
+  'xox[baprs]-[0-9A-Za-z-]{10,}'                   # Slack tokens
+  '(?i)(api[_-]?key|secret|password)[[:space:]]*[:=][[:space:]]*[^[:space:]]{8,}'
+)
+patterns=("${default_patterns[@]}")
+if [ -n "${THINK_AND_SHIP_REDACT_PATTERNS:-}" ]; then
+  # Append comma-separated extras without expanding an empty array (set -u).
+  IFS=',' read -r -a extra_patterns <<< "$THINK_AND_SHIP_REDACT_PATTERNS"
+  patterns+=("${extra_patterns[@]}")
+fi
+
+for f in "${staged[@]}"; do
+  [ -f "$f" ] || continue
+  for pat in "${patterns[@]}"; do
+    [ -n "$pat" ] || continue
+    if grep -nEi "$pat" -- "$f" >/dev/null 2>&1; then
+      echo "pre-commit: pattern /$pat/ matched in $f" >&2
+      fail=1
+    fi
+  done
+done
+
+if [ "$fail" -ne 0 ]; then
+  echo "" >&2
+  echo "Commit blocked: potential secret(s) in staged .think-and-ship/ traces." >&2
+  echo "Redact the offending record(s), or move them back to the gitignored" >&2
+  echo "local/ partition, then re-stage. Override (NOT recommended): --no-verify." >&2
+  exit 1
+fi
+
+exit 0
