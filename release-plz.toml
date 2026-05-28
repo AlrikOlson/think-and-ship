@@ -1,0 +1,75 @@
+# release-plz configuration — see https://release-plz.dev/docs/config
+#
+# Division of labour (see docs/RELEASING.md):
+#   • release-plz owns: version bumps (Conventional Commits), CHANGELOG.md
+#     updates, crates.io publish of `think-and-ship`, and the `v<version>`
+#     git tag + GitHub release.
+#   • The tag release-plz pushes triggers .github/workflows/release.yml,
+#     which builds the cross-platform binaries, publishes the npm package,
+#     and attaches the binaries to the GitHub release.
+#
+# IMPORTANT: that cascade only works if release-plz authenticates with a
+# Personal Access Token / GitHub App token (secrets.RELEASE_PLZ_TOKEN), NOT
+# the default GITHUB_TOKEN — GitHub never fires downstream workflows for
+# events created by GITHUB_TOKEN. See docs/RELEASING.md.
+
+[workspace]
+# Conservative defaults: do nothing unless a package opts in below. This keeps
+# release-plz from ever touching a crate we haven't deliberately enrolled.
+release = false
+publish = false
+changelog_update = false
+git_release_enable = false
+# Keep the Keep-a-Changelog shape the existing CHANGELOG.md already uses.
+git_release_draft = false
+dependencies_update = false
+
+# ── The one actively-versioned crate ──────────────────────────────────────
+[[package]]
+name = "think-and-ship"
+release = true
+publish = true
+changelog_update = true
+changelog_path = "CHANGELOG.md"
+git_release_enable = true
+# Tag pattern matches what release.yml listens for: `v0.3.0`, `v1.0.0`, …
+git_tag_name = "v{{ version }}"
+
+# ── Frozen deprecation stubs — never auto-bump or re-publish ───────────────
+# These are pinned at their final v0.1.x-era stub versions and only ever
+# change by a deliberate manual `cargo publish`. Conventional-commit churn in
+# the workspace must not drag their versions.
+[[package]]
+name = "deliberate-mcp"
+release = false
+publish = false
+
+[[package]]
+name = "resolute-mcp"
+release = false
+publish = false
+
+# think-and-ship-viewer is `publish = false` in its own Cargo.toml (Tauri app,
+# never on crates.io); release-plz skips unpublishable crates automatically,
+# but we pin it off explicitly so the intent is local to this file too.
+[[package]]
+name = "think-and-ship-viewer"
+release = false
+publish = false
+
+[changelog]
+# Conventional-Commit → Keep-a-Changelog section mapping.
+commit_parsers = [
+  { message = "^feat", group = "Added" },
+  { message = "^fix", group = "Fixed" },
+  { message = "^perf", group = "Changed" },
+  { message = "^refactor", group = "Changed" },
+  { message = "^docs", group = "Documentation" },
+  { message = "^chore\\(release\\)", skip = true },
+  { message = "^chore", skip = true },
+  { message = "^test", skip = true },
+  { message = "^ci", skip = true },
+  { body = ".*security", group = "Security" },
+]
+# Drop the leading "chore: " / "feat: " prefix from the rendered line.
+protect_breaking_commits = true

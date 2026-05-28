@@ -1,0 +1,69 @@
+name: release-plz
+
+# release-plz drives versioning + changelog + crates.io publish + git tag from
+# Conventional Commits. See release-plz.toml and docs/RELEASING.md.
+#
+# Flow:
+#   1. release-plz-pr keeps an open "Release v0.x.y" PR up to date with the
+#      version bump + CHANGELOG.md entries derived from commits on main.
+#   2. When that PR is merged, release-plz-release publishes `think-and-ship`
+#      to crates.io and pushes a `v0.x.y` tag + GitHub release.
+#   3. That tag triggers .github/workflows/release.yml (binaries + npm).
+#
+# The tag in step 2 only triggers step 3 if release-plz authenticates with a
+# PAT / GitHub App token (secrets.RELEASE_PLZ_TOKEN). The default GITHUB_TOKEN
+# cannot trigger downstream workflows — GitHub's anti-recursion rule. If the
+# secret is unset the jobs fall back to GITHUB_TOKEN and the release still
+# happens, but you must push the tag manually to kick off release.yml.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Never run two release-plz invocations against the same branch concurrently.
+concurrency:
+  group: release-plz-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Publishes + tags once a release PR is merged into main.
+  release-plz-release:
+    name: release-plz release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PLZ_TOKEN || secrets.GITHUB_TOKEN }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run release-plz release
+        uses: release-plz/action@v0
+        with:
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN || secrets.GITHUB_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # Keeps the version-bump / changelog PR up to date on every push to main.
+  release-plz-pr:
+    name: release-plz PR
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_PLZ_TOKEN || secrets.GITHUB_TOKEN }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Run release-plz release-pr
+        uses: release-plz/action@v0
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN || secrets.GITHUB_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

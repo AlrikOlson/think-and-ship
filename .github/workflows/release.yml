@@ -109,14 +109,19 @@ jobs:
         with:
           merge-multiple: true
 
-      - name: Create GitHub Release
+      # release-plz creates the GitHub release for the tag with the
+      # per-version CHANGELOG body. softprops/action-gh-release upserts by
+      # tag, so here we only ATTACH the cross-platform binaries to that
+      # existing release — no `body_path`, so we never clobber release-plz's
+      # changelog body. (If a tag is ever pushed manually without release-plz,
+      # this still creates the release; it just won't have a curated body.)
+      - name: Attach binaries to GitHub release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             think-and-ship-*.tar.gz
             deliberate-mcp-*.tar.gz
             resolute-mcp-*.tar.gz
-          body_path: docs/RELEASE_NOTES_v0.2.0.md
           generate_release_notes: false
 
   publish-npm:
@@ -147,7 +152,14 @@ jobs:
         working-directory: npm/resolute-mcp
         run: npm publish --provenance --access public
 
-  publish-crates:
+  # crates.io publish of `think-and-ship` is owned by release-plz
+  # (.github/workflows/release-plz.yml) — it publishes before pushing the tag
+  # that triggers this workflow, so the unified crate is already on crates.io
+  # by the time the binaries build. This job only re-publishes the two FROZEN
+  # deprecation stubs, which release-plz deliberately ignores (release = false
+  # in release-plz.toml). The `|| echo` guards keep it idempotent: on a normal
+  # tag the stubs are already published and these are no-ops.
+  publish-crates-stubs:
     needs: release
     runs-on: ubuntu-latest
     steps:
@@ -155,19 +167,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
-      # Unified crate first.
-      - name: Publish think-and-ship
-        run: cargo publish -p think-and-ship || echo "Already published, skipping"
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      # Then the deprecation stubs. The 30s sleep gives crates.io's
-      # index a moment to settle between publishes; cargo otherwise
-      # may not find the just-published version when validating deps.
       - name: Publish resolute-mcp (stub)
-        run: |
-          sleep 30
-          cargo publish -p resolute-mcp || echo "Already published, skipping"
+        run: cargo publish -p resolute-mcp || echo "Already published, skipping"
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
