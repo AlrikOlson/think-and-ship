@@ -17,7 +17,10 @@ use tokio_util::sync::CancellationToken;
 use tracing_subscriber::EnvFilter;
 
 use crate::env_compat::translate_legacy_env_vars;
-use crate::infra::{Broadcaster as EngineBroadcaster, PersistenceConfig as InfraPersistenceConfig};
+use crate::infra::{
+    Broadcaster as EngineBroadcaster, PersistenceConfig as InfraPersistenceConfig, RepoSink,
+    SyncTarget, discover_repo_root, shared_from_env,
+};
 use crate::mcp::UnifiedService;
 use crate::migrate::migrate_v0_1_data;
 use crate::ship::ShipService;
@@ -102,12 +105,20 @@ fn build_unified() -> Result<(UnifiedService, String)> {
     }
     think_config.broadcast.path = None;
 
+    // Git-native trace sink (Phase 23b): when THINK_AND_SHIP_SYNC_TARGET=repo-git
+    // and we're inside a git repo, mirror traces into `.think-and-ship/`. Both
+    // families share one sink so they commit into the same repo tree.
+    let repo_sink = resolve_repo_sink();
+
     let think_engine = {
-        let server = ReasoningServer::new(think_config);
-        match shared_broadcast.clone() {
-            Some(b) => server.with_broadcaster(ThinkBroadcaster::from_engine(b)),
-            None => server,
+        let mut server = ReasoningServer::new(think_config);
+        if let Some(b) = shared_broadcast.clone() {
+            server = server.with_broadcaster(ThinkBroadcaster::from_engine(b));
         }
+        if let Some((sink, shared)) = repo_sink.clone() {
+            server = server.with_repo_sink(sink, shared);
+        }
+        server
     };
     let think_service = ThinkService::new(think_engine);
 
@@ -121,6 +132,37 @@ fn build_unified() -> Result<(UnifiedService, String)> {
     let ship_service = ShipService::new(ship_engine);
 
     Ok((UnifiedService::new(think_service, ship_service), project_id))
+}
+
+/// Resolve the optional git-native trace sink from the environment.
+///
+/// Returns `Some((sink, shared))` only when `THINK_AND_SHIP_SYNC_TARGET=repo-git`
+/// AND the process is running inside a git repository. Otherwise `None` — the
+/// engines fall back to plain XDG persistence (the `Local` default). `shared`
+/// comes from `THINK_AND_SHIP_SHARED` (default `false` → gitignored `local/`).
+fn resolve_repo_sink() -> Option<(RepoSink, bool)> {
+    if SyncTarget::from_env() != SyncTarget::RepoGit {
+        return None;
+    }
+    let cwd = std::env::current_dir().ok()?;
+    let root = discover_repo_root(&cwd).or_else(|| {
+        eprintln!(
+            "think-and-ship: THINK_AND_SHIP_SYNC_TARGET=repo-git but not inside a git \
+             repository — falling back to local persistence."
+        );
+        None
+    })?;
+    let shared = shared_from_env();
+    let partition = if shared {
+        "sessions (committed)"
+    } else {
+        "local (gitignored)"
+    };
+    eprintln!(
+        "git-native traces: {}/.think-and-ship/ → {partition}",
+        root.display()
+    );
+    Some((RepoSink::new(root), shared))
 }
 
 async fn run_stdio(unified: UnifiedService) -> Result<()> {

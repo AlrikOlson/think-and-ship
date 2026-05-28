@@ -430,7 +430,14 @@ impl ReasoningServer {
         let payload = serde_json::to_value(stored).unwrap_or(Value::Null);
         let ctx = crate::infra::RecordCtx::resolve(sink.repo_root());
         // Reasoning steps attribute no code, so `files[]` is empty.
-        let record = ctx.build_record("think", "step", &session_id, self.repo_shared, payload, vec![]);
+        let record = ctx.build_record(
+            "think",
+            "step",
+            &session_id,
+            self.repo_shared,
+            payload,
+            vec![],
+        );
 
         if let Err(e) = sink.append(&session_id, self.repo_shared, &record) {
             tracing::warn!(
