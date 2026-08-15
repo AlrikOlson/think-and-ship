@@ -1,0 +1,4 @@
+interface:
+  display_name: "Signals"
+  short_description: "Research and triage stakeholder signals"
+  default_prompt: "Use $signals to triage and enrich the open stakeholder signals."

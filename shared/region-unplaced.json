@@ -1,0 +1,10 @@
+{
+  "region": "Uncharted ground",
+  "why_it_is_authored": "A region has no honest derivation. Every candidate available from a chunk's own fields is the id prefix, and a region name contained in an id prefix names a slug rather than a place. So this one is written down by a person, like every other region on the map, and the code is only allowed to apply it — never to invent one beside it.",
+  "why_it_passes_the_check": "An id prefix is a single token: the split that produces it breaks on space. A region name containing a space therefore cannot be a substring of any prefix, whatever the ids turn out to be. That is why this name is safe structurally rather than by luck, and why replacing it with a single word would be unsafe even if today's ids happened to allow it.",
+  "read_by": [
+    "crates/think-and-ship/src/roadmap/region.rs — region::UNPLACED",
+    "frontend/src/tree/region.ts — UNPLACED"
+  ],
+  "note": "Owned by neither language. Both declare their own constant and both assert it against this file, so changing the name on one side alone turns the other side's suite red."
+}

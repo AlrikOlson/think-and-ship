@@ -1,0 +1,30 @@
+name: Audit
+
+# cargo-deny over the shipping dependency graph: RUSTSEC advisories, the
+# license allowlist, wildcard bans, and registry/git source policy — see
+# deny.toml. Advisories appear without commits, so the job also runs weekly.
+#
+# Unlike ci.yml this workflow does NOT skip dependabot: a dependency bump is
+# exactly the change an audit exists to check, and the job costs about a
+# minute (no build — it reads Cargo.lock).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-deny:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          command: check

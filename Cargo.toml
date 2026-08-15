@@ -1,0 +1,25 @@
+[workspace]
+members = ["crates/think-and-ship", "crates/think-and-ship-viewer/src-tauri"]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/AlrikOlson/think-and-ship"
+
+# Only deps actually inherited via `workspace = true` live here. Each crate
+# declares the rest (rmcp 1.7, schemars 1, tokio, serde, …) directly because
+# their feature sets diverge per crate. Stale rmcp/schemars majors were removed
+# here in Phase 20.5 — leaving them risked a silent downgrade if a crate ever
+# switched to inheritance.
+[workspace.dependencies]
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+
+# Release profile must live at the workspace root — Cargo ignores `[profile.*]`
+# in non-root member manifests (warns on every build). This applies to the
+# shipping `think-and-ship` binary. 
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

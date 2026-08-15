@@ -1,0 +1,37 @@
+[package]
+name = "think-and-ship-viewer"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Live desktop viewer for think-and-ship reasoning + execution traces (Tauri 2)"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "think-and-ship-viewer"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# The viewer reads the same wire format the server writes, so it takes its
+# BroadcastFrame / ThinkHistory straight from the engine crate rather than
+# keeping a second copy of the types in step with it by hand.
+think-and-ship = { path = "../../think-and-ship" }
+
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-util", "io-std", "net", "fs", "sync", "time", "signal"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+notify = "8"
+notify-debouncer-full = "0.6"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

@@ -1,0 +1,20 @@
+interface:
+  display_name: "Switch work"
+  short_description: "Choose the workstream and mode you are working in"
+  default_prompt: "Use $switch-work to choose which workstream and mode I am working in."
+policy:
+  # Implicit invocation is ALLOWED. switch-work redirects every later
+  # advance-work invocation, so a model must not change the workstream unasked —
+  # but that restraint belongs in the skill's own Boundaries section, which
+  # already forbids it, and in a report that names the lane and workstream on
+  # every run. Locking the door instead meant "switch to billing", a trigger the
+  # description advertises, did nothing at all.
+  allow_implicit_invocation: true
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "roadmap_focus_get"
+      description: "Read this caller's focused workstream and its frontier"
+    - type: "mcp"
+      value: "roadmap_focus_set"
+      description: "Point this caller at a workstream and mode"

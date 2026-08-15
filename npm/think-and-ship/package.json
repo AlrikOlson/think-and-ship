@@ -1,0 +1,32 @@
+{
+  "name": "think-and-ship",
+  "version": "0.4.0",
+  "description": "Unified MCP server for AI agents: reasoning (think_*), execution (ship_*), roadmap + signals — one binary, four tool families.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AlrikOlson/think-and-ship"
+  },
+  "bin": {
+    "think-and-ship": "cli.js"
+  },
+  "scripts": {
+    "postinstall": "node install.js"
+  },
+  "files": [
+    "bin/",
+    "cli.js",
+    "install.js",
+    "README.md"
+  ],
+  "keywords": [
+    "mcp",
+    "ai",
+    "agent",
+    "reasoning",
+    "execution",
+    "think-and-ship",
+    "think",
+    "ship"
+  ]
+}

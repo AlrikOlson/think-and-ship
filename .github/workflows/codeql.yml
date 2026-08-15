@@ -1,0 +1,72 @@
+name: CodeQL
+
+# Advanced setup, deliberately — this file exists because default setup
+# cannot scan Rust here. Rust analysis went GA in CodeQL 2.23.3 and the docs
+# list it for default setup, but the `languages` enum on
+# PATCH /repos/{owner}/{repo}/code-scanning/default-setup still rejects it
+# (actions, c-cpp, csharp, go, java-kotlin, javascript-typescript, python,
+# ruby, swift — no rust, as of 2026-08), and auto-detection does not add it.
+# A workflow we own is the only lane that reaches the Rust workspace.
+#
+# CONSEQUENCE: default setup must stay DISABLED. GitHub rejects SARIF from an
+# advanced configuration while default setup is on ("CodeQL analyses from
+# advanced configurations cannot be processed when the default setup is
+# enabled"), so turning default setup back on silently breaks every job here.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 5 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      # The SARIF upload that becomes the code scanning alerts.
+      security-events: write
+      # Fetching internal/private CodeQL packs.
+      packages: read
+      # Both required while the repository is private.
+      actions: read
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # `build-mode` is only meaningful for compiled languages; the
+          # interpreted ones leave it unset and the input resolves to "".
+          - language: actions
+          - language: javascript-typescript
+          - language: python
+          # Extraction only, no cargo build: the runner ships rustup and
+          # cargo, the workspace is edition 2024 (both supported), and
+          # nothing here needs a nightly toolchain. `none` also keeps the
+          # viewer crate — excluded from every CI job — in scope, since
+          # scanning it never compiles it.
+          - language: rust
+            build-mode: none
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      - uses: github/codeql-action/init@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
+        with:
+          # Matches the category default setup used, so the alert history on
+          # main carries over instead of every finding reopening as new.
+          category: "/language:${{ matrix.language }}"

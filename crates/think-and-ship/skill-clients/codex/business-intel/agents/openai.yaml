@@ -1,0 +1,4 @@
+interface:
+  display_name: "Business Intel"
+  short_description: "Create CEO and CTO project briefings"
+  default_prompt: "Use $business-intel to give me a board-level project briefing."

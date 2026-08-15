@@ -1,0 +1,68 @@
+[package]
+name = "think-and-ship"
+version = "0.4.0"
+edition = "2024"
+# 1.89 for std::fs::File advisory locking (lock/unlock) — the dependency-free
+# cross-process guard in think/persistence.rs (think-trace-durability).
+rust-version = "1.89"
+description = "Unified MCP server for structured reasoning + execution tracking — one binary, four tool families"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/AlrikOlson/think-and-ship"
+homepage = "https://github.com/AlrikOlson/think-and-ship"
+keywords = ["mcp", "reasoning", "execution", "llm", "ai"]
+categories = ["command-line-utilities", "development-tools"]
+
+[lib]
+name = "think_and_ship"
+path = "src/lib.rs"
+
+[[bin]]
+name = "think-and-ship"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+anyhow = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-util", "net", "process", "sync", "time", "signal"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+schemars = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+owo-colors = "4"
+uuid = { version = "1", features = ["v4"] }
+thiserror = "2"
+sha2 = "0.10"
+# Dyn-compatible async traits for the tracker port (tracker-port-seam). Native
+# `async fn` in traits is stable but still NOT dyn-compatible
+# (rust-lang/rust#133119), and `Box<dyn TrackerPort>` is what keeps the provider
+# list out of the core.
+async-trait = "0.1"
+# `elicitation` is opt-in in rmcp and off by default: without it the whole
+# server->client "ask the human" API is `#[cfg]`d out. See src/mcp/elicit.rs for
+# why enabling it does NOT mean anything gets asked (mcp-elicitation-consent).
+rmcp = { version = "3.0.0-beta.2", features = ["server", "transport-io", "transport-streamable-http-server", "macros", "schemars", "elicitation"] }
+axum = "0.8"
+tokio-util = { version = "0.7", features = ["rt"] }
+# Cloud sync transport (SyncTarget::Cloud, Phase 31d) — ships in the local server.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+tokio-tungstenite = { version = "0.29.0", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
+futures-util = { version = "0.3.32", default-features = false, features = ["sink", "std"] }
+chacha20poly1305 = "0.10"
+base64 = "0.22"
+
+[dev-dependencies]
+tempfile = "3"
+pretty_assertions = "1"
+# Validates Rust-built cloud envelopes against the canonical
+# contract/unified-record-envelope.schema.json (Rust↔contract no-drift proof).
+jsonschema = "0.26"
+# Mock HTTP server for the CloudClient unit tests (Phase 31d2a).
+wiremock = "0.6"
+# rmcp client feature is dev-only — it's used by the e2e tests to drive
+# the server over a tokio::io::duplex transport (think_and_ship_e2e) and
+# over a real TCP socket via Streamable HTTP (http_transport).
+rmcp = { version = "3.0.0-beta.2", features = ["client", "transport-streamable-http-client-reqwest"] }

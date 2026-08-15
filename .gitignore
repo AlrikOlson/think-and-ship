@@ -1,0 +1,31 @@
+/target
+*.tmp
+.DS_Store
+node_modules/
+
+# Agent / IDE configs (personal, not project — recursive)
+**/.claude/
+**/.cursor/
+**/.windsurf/
+**/.continue/
+**/.vscode/mcp.json
+**/.mcp.json
+**/.ministr.toml
+**/.github/hooks/
+**/CLAUDE.md
+**/windsurf/
+**/.github/copilot-instructions.md
+**/AGENTS.md
+**/ROADMAP.md
+
+# GUI-scrutiny residue: Playwright screenshots land at the repo root, and the
+# MCP server keeps its cache beside them. Real image assets live under the
+# site tree, so only the root pattern is ignored.
+/*.png
+.playwright-mcp/
+
+storybook-static
+
+# Local roadmap region grouping: this workspace's own planning state,
+# not something a clone needs. The file stays on disk; the tool reads it.
+.think-and-ship/regions.json

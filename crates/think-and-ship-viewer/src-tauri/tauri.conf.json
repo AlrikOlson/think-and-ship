@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "think-and-ship",
+  "version": "0.2.0",
+  "identifier": "dev.thinkandship.viewer",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "think-and-ship",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 480,
+        "resizable": true,
+        "decorations": true,
+        "transparent": false,
+        "fullscreen": false,
+        "theme": null
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png"
+    ]
+  },
+  "plugins": {}
+}

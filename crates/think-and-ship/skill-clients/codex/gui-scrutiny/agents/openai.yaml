@@ -1,0 +1,4 @@
+interface:
+  display_name: "GUI Scrutiny"
+  short_description: "Critique and verify GUI quality empirically"
+  default_prompt: "Use $gui-scrutiny to inspect and critique this interface."

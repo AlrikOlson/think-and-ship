@@ -1,0 +1,23 @@
+{
+  "$comment": "The contract between the two name derivations. crates/think-and-ship/src/roadmap/name.rs seeds a stored name when a chunk is written; frontend/src/tree/name.ts falls back to the same label when a record predates the field and its cloud copy will never be rewritten. The same id must produce the same label whichever side happens to name it, so both languages drive this table and neither owns it. Every id here is foreign on purpose — no project's live roadmap has ever held one — because a derivation only ever exercised against existing data proves nothing about the next chunk anybody writes.",
+  "budget": 24,
+  "cases": [
+    { "id": "the-widget-registry-should-flush", "name": "Widget registry", "why": "leading article dropped, trailing modal trimmed" },
+    { "id": "ftp-upload-retries-forever", "name": "FTP upload retries", "why": "acronym uppercased where title case would read as a typo" },
+    { "id": "an-ldap-bind-leaks-a-handle", "name": "LDAP bind leaks", "why": "leading article dropped ahead of an acronym" },
+    { "id": "quota-ceiling-is-unenforced", "name": "Quota ceiling", "why": "trailing copula trimmed rather than left pointing at a dropped word" },
+    { "id": "shipping-labels-print-blank-on-thermal", "name": "Shipping labels print", "why": "three-word cap, comfortably inside the budget" },
+    { "id": "reconciliation-statements-duplicate", "name": "Reconciliation", "why": "budget binds before the word cap does" },
+    { "id": "payroll_export.breaks_on_leap_day", "name": "Payroll export breaks", "why": "underscores and dots are separators too" },
+    { "id": "harbourmaster", "name": "Harbourmaster", "why": "a single word, already a fine label" },
+    { "id": "jwt-secret-is-unrecoverable", "name": "JWT secret", "why": "the trailing copula is dropped after the cut, not before it" },
+    { "id": "id-uuid-mapping", "name": "ID UUID mapping", "why": "two acronyms in one label" },
+    { "id": "ONE-TWO-THREE", "name": "One two three", "why": "sentence case, not title case — a label is a name, not a headline" },
+    { "id": "a-b-c-d-e-f-g-h-i-j-k", "name": "B c d", "why": "a leading article is dropped even when every word is one letter" },
+    { "id": "the", "name": "The", "why": "an id that is nothing but an article still names itself" },
+    { "id": "a-the", "name": "The", "why": "the leading pass never trims the last word standing" },
+    { "id": "supercalifragilisticexpialidocious-considerations", "name": "Supercalifragilisticexpi", "why": "a single word longer than the whole budget is clamped, the last line of defence" },
+    { "id": "ünïcödé-wörd-thät-rüns-lóng-ènough-to-clamp", "name": "Ünïcödé wörd thät", "why": "the budget counts characters, so a multi-byte word spends one mark each" },
+    { "id": "-", "name": "-", "why": "no word characters at all: the id is still identity, so it is clamped rather than replaced by an invented label" }
+  ]
+}

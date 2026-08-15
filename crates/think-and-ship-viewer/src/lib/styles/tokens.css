@@ -1,0 +1,100 @@
+/*
+ * Design tokens. These are the rails the rest of the UI runs on.
+ *
+ * Rules enforced here, not optional:
+ * — Monospace stack only. No proportional fonts for chrome.
+ * — Three font sizes: 11 / 12 / 13. Nothing else.
+ * — 1 px hairline rules. Border-radius is 2 px max.
+ * — No shadows (other than a single optional 1 px focus inset).
+ * — Two themes, paper + slate, with fixed-discrete status triplets.
+ * — Purpose color-bars are picked from a 10-entry, deuteranopia-safe set.
+ *
+ * Reference aesthetic: Chrome DevTools Performance panel, Tracy profiler,
+ * Apple Instruments. Not langsmith. Not langfuse. Not shadcn.
+ */
+
+:root {
+  --font-mono:
+    "Berkeley Mono", "JetBrains Mono", "SF Mono", "Menlo", "Consolas",
+    ui-monospace, monospace;
+
+  --text-11: 11px;
+  --text-12: 12px;
+  --text-13: 13px;
+
+  /* Paper theme (default; system light). */
+  --bg: #fafaf7;
+  --bg-elev: #f3f3ee;
+  --bg-hover: #efeee8;
+  --bg-active: #e5e3da;
+  --ink: #1c1c1a;
+  --ink-soft: #2a2a26;
+  --muted: #5b5b56;
+  --rule: #d3d2c8;
+  --rule-strong: #9d9c91;
+  --accent: #3a6ea5;
+  --accent-soft: #cfdcec;
+  --selection: #d5e1f2;
+
+  --ok: #3a8a3a;
+  --warn: #b86a1f;
+  --alert: #c0382a;
+
+  /* Purpose color-bars. Each is a single muted hue chosen to survive
+     8% deuteranopia and stay distinct on both themes. */
+  --purpose-analysis: #5b6f88;
+  --purpose-decision: #5a4f88;
+  --purpose-action: #8a5d2a;
+  --purpose-hypothesis: #9b4a64;
+  --purpose-reflection: #4f7a5d;
+  --purpose-validation: #2f7575;
+  --purpose-correction: #b08840;
+  --purpose-summary: #5b5b56;
+  --purpose-exploration: #6e5b8e;
+  --purpose-planning: #6a7d3e;
+  --purpose-unknown: #8a8a82;
+
+  /* Relation edge colors (graph view + trace overlay). */
+  --rel-supports: #1f7d7d;
+  --rel-refutes: #c0382a;
+  --rel-depends: #6a6f78;
+  --rel-unlabeled: #b6b5ab;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #13161c;
+    --bg-elev: #181c24;
+    --bg-hover: #1d212a;
+    --bg-active: #232834;
+    --ink: #d8dae0;
+    --ink-soft: #c4c6cd;
+    --muted: #7a7e88;
+    --rule: #2b3140;
+    --rule-strong: #4a5160;
+    --accent: #79b4ff;
+    --accent-soft: #1e2f4a;
+    --selection: #243b5a;
+
+    --ok: #4ea44e;
+    --warn: #d18a3a;
+    --alert: #e05446;
+
+    --purpose-analysis: #7d8da6;
+    --purpose-decision: #8478b8;
+    --purpose-action: #b4823f;
+    --purpose-hypothesis: #c46f8d;
+    --purpose-reflection: #6fa783;
+    --purpose-validation: #4fa3a3;
+    --purpose-correction: #d4a754;
+    --purpose-summary: #8a8a82;
+    --purpose-exploration: #9682b5;
+    --purpose-planning: #93a55c;
+    --purpose-unknown: #8a8a82;
+
+    --rel-supports: #4fa3a3;
+    --rel-refutes: #e05446;
+    --rel-depends: #8b9099;
+    --rel-unlabeled: #4a5160;
+  }
+}

@@ -1,0 +1,39 @@
+name: Windows install proof
+
+# Proves the README's Windows install story end to end: `cargo install`
+# from a clean checkout with the MSVC toolchain, then the installed exe
+# answering from a PATH-less absolute invocation — the way a GUI-launched
+# MCP client actually runs it. Dispatch-only on purpose: the CI matrix
+# already tests every push on windows-latest, and this release-profile
+# build should spend Actions minutes only when a human asks for the proof.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          toolchain: stable
+      - name: cargo install from the workspace
+        run: cargo install --locked --path crates/think-and-ship
+      # The exe is invoked by absolute path, not through PATH — the same way
+      # a GUI-launched MCP client runs it. `doctor` exits 1 on a machine with
+      # no MCP config entry, so `init` runs first, exactly as the README says.
+      - name: installed exe answers by absolute path
+        shell: pwsh
+        run: |
+          $exe = "$env:USERPROFILE\.cargo\bin\think-and-ship.exe"
+          & $exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $env:THINK_AND_SHIP_PERSIST = "true"
+          & $exe init
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $exe doctor
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

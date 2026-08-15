@@ -1,0 +1,592 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://think-and-ship.dev/contract/unified-record-envelope/v1.json",
+  "title": "Unified record envelope (v1)",
+  "description": "The canonical, backend-agnostic wire form of ANY think-and-ship record — a think step, a ship objective/task/action/check, a roadmap chunk, or a signal — in the unified Phase-31 SaaS. This file is the SINGLE SOURCE OF TRUTH: the Rust core validates against it (serde + a schema test) and the TS edge generates its types from it (json-schema-to-typescript), so the two can never drift. It GENERALIZES the Phase-30a Signal envelope (contract/signal-envelope.schema.json): the cloud fields (schema_version, tenant_id, idempotency_key, source, attribution) are reused verbatim and lifted to the envelope, the local family object is carried verbatim under `record`, and every family's links are normalized into one queryable `edges[]` graph — the product's moat. The signal envelope remains the family=signal profile (see docs/UNIFIED_CONTRACT.md §Relationship to the 30a Signal envelope). See docs/UNIFIED_CONTRACT.md for the prose contract, the per-family idempotency rules, the tenant-identity model, and the edge/graph model.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tenant_id",
+    "family",
+    "kind",
+    "id",
+    "idempotency_key",
+    "created",
+    "edges",
+    "record"
+  ],
+  "properties": {
+    "schema_version": {
+      "description": "Version of THIS envelope schema. Bumped only on a breaking envelope change, independently of any backend, local-record, or signal-envelope version. Integer-as-string form, mirroring docs/SCHEMA.md.",
+      "type": "string",
+      "const": "1"
+    },
+    "tenant_id": {
+      "description": "The WORKSPACE this record belongs to (wire name kept as tenant_id; 31a-ii). The one hard wall: one workspace = one Durable Object; auth, billing, sync, and isolation bind here; cross-workspace reads are never permitted and the graph never spans workspaces. Two id shapes share the namespace: 'org_…' (a WorkOS organization workspace) and a resolve_project_id() slug (<basename>-<6hex(cwd)> — a single-project workspace from local/email ingest, which merges into an org workspace as a LENS via the aliasing registry). docs/UNIFIED_CONTRACT.md §Workspace identity & isolation.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._-]+$"
+    },
+    "family": {
+      "$ref": "#/$defs/Family"
+    },
+    "kind": {
+      "$ref": "#/$defs/Kind"
+    },
+    "id": {
+      "description": "The record's stable id, unique within (tenant_id, family, kind). Heterogeneous by family — a think step number ('884'), a ship task/objective/action/check id ('verify-31a', 'action:42'), a roadmap chunk slug ('saas-unified-contract'), or a signal UUIDv4. Pair with `family`+`kind` to address a record; pair with `family` to form an edge endpoint ('<family-prefix>:<id>').",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9:._-]+$"
+    },
+    "idempotency_key": {
+      "description": "Lowercase hex SHA-256 that lets re-delivery / re-sync of the same record collapse to one upsert. Computed per family (docs/UNIFIED_CONTRACT.md §Idempotency): owner-authored records (think/ship/roadmap) use sha256(tenant_id \\u241f family \\u241f kind \\u241f id); ingested signals keep the 30a rule sha256(tenant_id \\u241f source.adapter \\u241f source.external_id), else sha256(tenant_id \\u241f kind \\u241f from \\u241f body \\u241f created). \\u241f (U+241F) is the field separator. The canonical store treats a colliding key as a no-op upsert.",
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "created": {
+      "description": "When the record was first created at its origin (RFC 3339 / ISO 8601, UTC).",
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated": {
+      "description": "Last mutation time (RFC 3339, UTC). Set by the canonical store on every write; absent on a freshly-created record.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "$ref": "#/$defs/Source"
+    },
+    "attribution": {
+      "$ref": "#/$defs/Attribution"
+    },
+    "lenses": {
+      "description": "OPTIONAL (31a-ii): the lenses this record is a member of within its workspace — a soft, many-to-many grouping, never a partition. Absent = unlensed (every pre-31a-ii record); for a slug workspace the implicit sole lens is the slug itself, which seeds the records' initial lens on an org merge. idempotency_key NEVER reads this field: the same record in different lenses is the same record. docs/UNIFIED_CONTRACT.md §Lens.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128,
+        "pattern": "^[A-Za-z0-9._-]+$"
+      },
+      "uniqueItems": true,
+      "maxItems": 32
+    },
+    "edges": {
+      "description": "The normalized cross-reference graph for this record — the product's moat. Each edge's SOURCE is this record's ('<family-prefix>:<id>') endpoint; `ref` is the TARGET in the existing prefix:value wire form. edges[] is the canonical, queryable projection of however each family stores links locally: roadmap Chunk.cross_refs[] and signal Signal.cross_refs[] map 1:1; a think step's dependencies[] become think:<step> edges (carrying the dependency relation) and its execution_ref becomes one edge; a ship action's think_step becomes a think:<n> edge. Derivable from `record`, but materialized so the backend builds one graph without parsing four local shapes.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Edge"
+      }
+    },
+    "record": {
+      "description": "The verbatim local family domain object (a think ThinkStep | ship Objective/Task/Action/Check | roadmap Chunk | Signal). Its detailed shape is owned by the local Rust types (and, for signals, fully specified by contract/signal-envelope.schema.json) and evolves independently, so `additionalProperties` is intentionally OPEN here — the envelope wrapper + edges are the strict contract, the payload is the existing record. The `id` of this record MUST equal the envelope `id`. ONE payload key is contract-owned across every family: `content`, the optional structured body (see $defs/StructuredContent) that lets a record render as UI instead of a prose wall; when present it must be well-formed, and the prose field (`body`/`description`) remains the plain-text fallback for readers that don't know the shape.",
+      "type": "object",
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/StructuredContent"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "family": {
+            "const": "think"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "kind": {
+            "const": "step"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "family": {
+            "const": "ship"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "objective",
+              "task",
+              "action",
+              "check",
+              "gate"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "family": {
+            "const": "roadmap"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "kind": {
+            "const": "chunk"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "family": {
+            "const": "signal"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "kind": {
+            "const": "signal"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "Family": {
+      "description": "Which tool family produced the record. The four families that share the think-and-ship server.",
+      "type": "string",
+      "enum": [
+        "think",
+        "ship",
+        "roadmap",
+        "signal"
+      ]
+    },
+    "Kind": {
+      "description": "The record type within its family. Constrained to the family by the top-level allOf: think\\u2192step; ship\\u2192objective|task|action|check|gate; roadmap\\u2192chunk; signal\\u2192signal. A `gate` is an approval gate: agent work paused on a question only a human can answer (docs/UNIFIED_CONTRACT.md \\u00a7Approval gates) \\u2014 its record carries the question, the option set with a declared safe default, an expiry that resolves an unanswered gate to that default, and \\u2014 once decided \\u2014 who answered and when.",
+      "type": "string",
+      "enum": [
+        "step",
+        "objective",
+        "task",
+        "action",
+        "check",
+        "gate",
+        "chunk",
+        "signal"
+      ]
+    },
+    "Edge": {
+      "description": "One directed edge in the cross-ref graph. Source = the enclosing record's ('<family-prefix>:<id>'); target = `ref`. Strict (additionalProperties:false): an edge is a contract object, not a free-form bag.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ref"
+      ],
+      "properties": {
+        "ref": {
+          "$ref": "#/$defs/CrossRef"
+        },
+        "relation": {
+          "$ref": "#/$defs/Relation"
+        }
+      }
+    },
+    "CrossRef": {
+      "description": "A cross-reference target in the existing wire form `prefix:value`. `prefix` is one of the think/ship/roadmap families, plus `signal`, plus `ext` for an item that lives in an external tracker (`ext:<provider>/<external_id>`). Mirrors infra/cross_ref.rs::CrossRef::from_wire so the same parser accepts it. An `ext:` target has no record of its own in this store, so it appears in the graph as an incoming edge only.",
+      "type": "string",
+      "pattern": "^(think|task|action|check|chunk|signal|objective|ext):.+$"
+    },
+    "Relation": {
+      "description": "Optional typed relation on an edge. `supports`/`refutes`/`depends_on` mirror the think dependency-edge vocabulary; `realizes` (chunk\\u2192task), `motivates` (think\\u2192task), and `promoted_from`/`promotes` (signal\\u2194chunk) name the cross-family links the graph already expresses. Absent = an unlabeled link.",
+      "type": "string",
+      "enum": [
+        "supports",
+        "refutes",
+        "depends_on",
+        "realizes",
+        "motivates",
+        "promoted_from",
+        "promotes",
+        "part_of",
+        "verifies"
+      ]
+    },
+    "Source": {
+      "description": "Which edge adapter produced the record and the upstream coordinates needed to dedupe it (Phase 30c). Mainly populated for ingested signals; owner-authored think/ship/roadmap records use source.adapter 'local' or 'mcp', or omit `source` entirely. Reused verbatim from the 30a Signal envelope.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter",
+        "received_at"
+      ],
+      "properties": {
+        "adapter": {
+          "type": "string",
+          "description": "Which edge adapter produced the record. OPEN by design (saga 5b): a closed enum meant registering a new provider required editing this shared contract file and redeploying the Worker before a single event could land. Constrained by SHAPE rather than by value — lowercase snake_case — so a typo is still refused, while a new adapter is a local registration. The values below are the ones that exist today, not the ones permitted.",
+          "pattern": "^[a-z][a-z0-9_]{0,31}$",
+          "examples": [
+            "webhook",
+            "github_issue",
+            "email",
+            "submit_api",
+            "mcp",
+            "local"
+          ]
+        },
+        "external_id": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "received_at": {
+          "description": "When the edge accepted the inbound event (RFC 3339, UTC).",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "StructuredContent": {
+      "description": "The structured body of a record (v1) — a flat, closed set of shapes an agent fills instead of packing everything into prose, so the webapp renders sections, key:value facts, and a one-line summary as real UI. Deliberately NOT a rich-text tree: `summary` is the plain-language headline every card can show, `facts` is the key:value set (status words, counts, ids) that would otherwise be shorthand soup inside a paragraph, and `sections` carry the detail — each a heading plus markdown prose and/or a checklist. Flat by design (a section cannot contain sections) so every renderer is total. Lives at `record.content` for every family; the prose field stays the fallback and legacy records simply omit this.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "summary"
+      ],
+      "properties": {
+        "version": {
+          "description": "Version of the StructuredContent shape itself, independent of the envelope schema_version.",
+          "const": 1
+        },
+        "summary": {
+          "description": "One plain-language sentence a card can show whole — what this record says, for a reader with no project context. No internal shorthand, no ids.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 280
+        },
+        "facts": {
+          "description": "Short label:value pairs rendered as a fact grid (kind, status, counts, owners). Keep each atomic — a fact is a chip, not a sentence.",
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/ContentFact"
+          }
+        },
+        "sections": {
+          "description": "The detail, one titled section per concern. Order is presentation order.",
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "$ref": "#/$defs/ContentSection"
+          }
+        }
+      }
+    },
+    "ContentFact": {
+      "description": "One key:value fact. `label` names the dimension, `value` is the short answer.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "value"
+      ],
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 48
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        }
+      }
+    },
+    "ContentSection": {
+      "description": "One titled slice of the record's detail: markdown prose (`prose`), a checklist (`list`), or both. A section never nests.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "heading"
+      ],
+      "properties": {
+        "heading": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "prose": {
+          "description": "Markdown body for this section (the same subset the prose renderer already speaks: paragraphs, bold/em/code, links, bullet and numbered lists).",
+          "type": "string",
+          "maxLength": 4000
+        },
+        "list": {
+          "description": "A checklist or plain item list. `done` marks a completed item; omit it for a non-checklist item.",
+          "type": "array",
+          "maxItems": 24,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "text"
+            ],
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 400
+              },
+              "done": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "Attribution": {
+      "description": "Structured, optionally-authenticated identity of the author/submitter. `authenticated` is true only when identity was proven via the tenant's OAuth 2.1 auth. Reused verbatim from the 30a Signal envelope.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "handle": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "subject": {
+          "description": "The OAuth 2.1 access-token subject (`sub`) when the author authenticated.",
+          "type": "string",
+          "maxLength": 256
+        },
+        "authenticated": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "1",
+      "tenant_id": "think-and-ship-676f38",
+      "family": "think",
+      "kind": "step",
+      "id": "884",
+      "idempotency_key": "a1b2c3d4e5f60718293a4b5c6d7e8f90112233445566778899aabbccddeeff00",
+      "created": "2026-06-08T03:14:30Z",
+      "source": {
+        "adapter": "local",
+        "received_at": "2026-06-08T03:14:30Z"
+      },
+      "edges": [
+        {
+          "ref": "think:883",
+          "relation": "depends_on"
+        },
+        {
+          "ref": "task:schema-31a",
+          "relation": "motivates"
+        }
+      ],
+      "record": {
+        "step_number": 884,
+        "purpose": "Synthesis — Phase-31 unified-SaaS cluster from the interview + research",
+        "outcome": "Add 11 Phase-31 backlog chunks…",
+        "pinned": true,
+        "execution_ref": "task:schema-31a",
+        "dependencies": [
+          {
+            "step": 883,
+            "relation": "depends_on"
+          }
+        ]
+      }
+    },
+    {
+      "schema_version": "1",
+      "tenant_id": "think-and-ship-676f38",
+      "family": "ship",
+      "kind": "action",
+      "id": "action:42",
+      "idempotency_key": "00ffeeddccbbaa998877665544332211009f8e7d6c5b4a39281706f5e4d3c2b1",
+      "created": "2026-06-08T03:23:00Z",
+      "edges": [
+        {
+          "ref": "think:886",
+          "relation": "motivates"
+        }
+      ],
+      "record": {
+        "id": 42,
+        "type": "code",
+        "description": "Authored contract/unified-record-envelope.schema.json",
+        "think_step": 886,
+        "files_touched": [
+          "contract/unified-record-envelope.schema.json"
+        ]
+      }
+    },
+    {
+      "schema_version": "1",
+      "tenant_id": "think-and-ship-676f38",
+      "family": "roadmap",
+      "kind": "chunk",
+      "id": "saas-unified-contract",
+      "idempotency_key": "deadbeef0000111122223333444455556666777788889999aaaabbbbccccddee",
+      "created": "2026-06-08T03:14:53Z",
+      "edges": [
+        {
+          "ref": "think:884"
+        },
+        {
+          "ref": "signal:f1c9a4e2-6b3d-4f8a-9c21-0a7e5d2b8c44",
+          "relation": "promoted_from"
+        }
+      ],
+      "record": {
+        "id": "saas-unified-contract",
+        "title": "Phase 31a — Unified multi-family wire contract",
+        "status": "in_progress",
+        "priority": 400,
+        "acceptance": [
+          "a versioned unified envelope schema covers all four families + the CrossRef edges"
+        ],
+        "deps": [
+          "signal-saas-contract"
+        ],
+        "cross_refs": [
+          "think:884"
+        ]
+      }
+    },
+    {
+      "schema_version": "1",
+      "tenant_id": "think-and-ship-676f38",
+      "family": "ship",
+      "kind": "gate",
+      "id": "b7e2c4a0-1f3d-4e5b-8a9c-2d6f0e4b8c1a",
+      "idempotency_key": "1122334455667788990011223344556677889900112233445566778899001122",
+      "created": "2026-07-31T14:00:00Z",
+      "edges": [
+        {
+          "ref": "task:deploy-31g",
+          "relation": "part_of"
+        }
+      ],
+      "record": {
+        "id": "b7e2c4a0-1f3d-4e5b-8a9c-2d6f0e4b8c1a",
+        "question": "Deploy the new billing Worker to production now?",
+        "body": "All 414 backend tests pass. Deploying replaces the live billing endpoint; rolling back takes one redeploy.",
+        "options": [
+          { "key": "deploy", "label": "Deploy now" },
+          { "key": "hold", "label": "Hold for review" }
+        ],
+        "default_key": "hold",
+        "state": "answered",
+        "opened_at": "2026-07-31T14:00:00Z",
+        "expires_at": "2026-07-31T15:00:00Z",
+        "answer": {
+          "choice": "deploy",
+          "decided_by": "Alrik Olson",
+          "decided_at": "2026-07-31T14:06:12Z"
+        }
+      }
+    },
+    {
+      "schema_version": "1",
+      "tenant_id": "think-and-ship-676f38",
+      "family": "signal",
+      "kind": "signal",
+      "id": "f1c9a4e2-6b3d-4f8a-9c21-0a7e5d2b8c44",
+      "idempotency_key": "9f2c1b7a4e6d8c0f3a5b9e1d7c2f4a6b8d0e2c4f6a8b0d2e4c6f8a0b2d4e6c8f",
+      "created": "2026-06-08T01:10:00Z",
+      "source": {
+        "adapter": "github_issue",
+        "external_id": "I_kwDOABCDEF1234567890",
+        "received_at": "2026-06-08T01:10:03Z"
+      },
+      "attribution": {
+        "display_name": "Dana Okoye",
+        "handle": "danao",
+        "authenticated": true,
+        "subject": "auth0|653f1c9a4e6d8c0f3a5b9e1d"
+      },
+      "edges": [
+        {
+          "ref": "think:867",
+          "relation": "supports"
+        },
+        {
+          "ref": "chunk:saas-unified-contract",
+          "relation": "promotes"
+        }
+      ],
+      "record": {
+        "id": "f1c9a4e2-6b3d-4f8a-9c21-0a7e5d2b8c44",
+        "kind": "feedback",
+        "from": "dana@acme.example",
+        "body": "The roadmap export drops sub-bullets when a chunk has nested acceptance notes.",
+        "status": "promoted",
+        "created": "2026-06-08T01:10:00Z",
+        "cross_refs": [
+          "think:867",
+          "chunk:saas-unified-contract"
+        ],
+        "content": {
+          "version": 1,
+          "summary": "Exporting the roadmap loses nested acceptance notes under their chunks.",
+          "facts": [
+            {
+              "label": "kind",
+              "value": "bug"
+            },
+            {
+              "label": "surface",
+              "value": "roadmap export"
+            }
+          ],
+          "sections": [
+            {
+              "heading": "What happens",
+              "prose": "Running an export on a roadmap whose chunks carry **nested** acceptance notes drops every sub-bullet below the first level."
+            },
+            {
+              "heading": "How to reproduce",
+              "list": [
+                {
+                  "text": "Add a chunk with a two-level acceptance list"
+                },
+                {
+                  "text": "Export the roadmap and compare",
+                  "done": false
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

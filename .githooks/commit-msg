@@ -1,0 +1,45 @@
+#!/bin/sh
+# Reject process narration in commit messages (docs/STYLE.md S8).
+#
+# A commit subject is a public surface: `git log --oneline` is what a
+# reviewer skims to judge whether a project is maintained seriously.
+# Internal work-unit markers (phase/saga numbers, plan-item ids, reasoning
+# -trace step references, private tracker ids) point at things a reader
+# outside this repository cannot resolve, so they may not appear here.
+#
+# History policy, decided 2026-07-29: commits before this hook existed keep
+# their subjects as-is (line in the sand). The repository was private for
+# all of them, rewriting would re-point every released tag and invalidate
+# every "fixed in <sha>" reference, and the inconsistency between old and
+# new messages is deliberate, not sloppy.
+#
+# Install: git config core.hooksPath .githooks
+# Bypass (should be rare and deliberate): git commit --no-verify
+
+msg_file="$1"
+
+# Strip comment lines and the diff a verbose commit appends.
+msg=$(sed -e '/^#/d' -e '/^diff --git /,$d' "$msg_file")
+
+fail() {
+    echo "commit-msg: $1" >&2
+    echo "commit-msg: process narration is not allowed in commit messages (docs/STYLE.md S8)." >&2
+    echo "commit-msg: say what changed in the project's own vocabulary instead." >&2
+    exit 1
+}
+
+check() {
+    pattern="$2"
+    hit=$(printf '%s\n' "$msg" | grep -E -n "$pattern" | head -1)
+    [ -n "$hit" ] && fail "$1 (line $hit)"
+}
+
+check "development phase marker"          '[Pp]hase[- ][0-9]'
+check "development saga marker"           '[Ss]aga([- ][0-9]|\b)'
+check "reasoning-trace step reference"    'think:[0-9]'
+check "roadmap work-item reference"       'chunk:[a-z0-9]'
+check "private tracker ticket id"         'THI-[0-9]'
+check "private tracker URL"               'linear\.app/'
+check "internal verification-ritual name" '[Ss]abotage'
+
+exit 0

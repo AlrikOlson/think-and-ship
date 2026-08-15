@@ -1,0 +1,5 @@
+# Every text file checks out with LF on every platform. Several tests gate
+# on source text via include_str! and LF-joined patterns ("\n#[cfg(test)]\nmod ");
+# a CRLF checkout on the Windows CI runner made those markers unmatchable and
+# failed the gates while the code was correct. No tracked file needs CRLF.
+* text=auto eol=lf

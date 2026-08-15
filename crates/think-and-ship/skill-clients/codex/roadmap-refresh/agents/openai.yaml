@@ -1,0 +1,4 @@
+interface:
+  display_name: "Roadmap Refresh"
+  short_description: "Research and reshape the project roadmap"
+  default_prompt: "Use $roadmap-refresh to research and refresh the project roadmap."

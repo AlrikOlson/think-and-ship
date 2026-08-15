@@ -1,0 +1,54 @@
+name: Scorecard
+
+# OpenSSF Scorecard analysis. The action only supports public repositories
+# (private ones need GitHub Advanced Security), so a visibility probe gates
+# the analysis: while the repo is private the job skips cleanly, and it
+# starts scoring on its own the day the repo goes public. Until then the
+# score comes from running the scorecard CLI locally (docs/RELEASING.md).
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "43 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # The schedule event payload carries no repository object, so the guard is
+  # an API probe rather than an expression on github.event.
+  visibility:
+    runs-on: ubuntu-latest
+    outputs:
+      private: ${{ steps.probe.outputs.private }}
+    steps:
+      - id: probe
+        run: echo "private=$(gh api "repos/${GITHUB_REPOSITORY}" --jq .private)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  analysis:
+    needs: visibility
+    if: needs.visibility.outputs.private == 'false'
+    runs-on: ubuntu-latest
+    permissions:
+      # publish_results uploads a signed result via GitHub's OIDC token; the
+      # published result is what backs the Scorecard badge.
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@2d1146689b8cda280b9bc96326124645441f03bc # v2.4.4
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scorecard-results
+          path: results.sarif
+          retention-days: 30

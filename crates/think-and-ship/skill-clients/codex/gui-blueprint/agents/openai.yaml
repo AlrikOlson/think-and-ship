@@ -1,0 +1,4 @@
+interface:
+  display_name: "GUI Blueprint"
+  short_description: "Design a grounded GUI direction and blueprint"
+  default_prompt: "Use $gui-blueprint to define the GUI direction for this project."

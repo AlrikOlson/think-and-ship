@@ -1,0 +1,4 @@
+interface:
+  display_name: "Craft"
+  short_description: "Apply the project operating doctrine"
+  default_prompt: "Use $craft to apply my usual project working practices."

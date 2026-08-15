@@ -1,0 +1,7 @@
+# Written by tests/unified_service.rs::records_the_measured_tool_surface.
+# A RECORD, NOT A GATE — nothing here is asserted. The ceiling is
+# tools_list_payload_stays_within_budget; this file is the slope.
+tools 53
+wire_bytes 153587
+model_facing_bytes 56821
+description_bytes 31739
