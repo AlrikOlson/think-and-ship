@@ -63,7 +63,10 @@ whether the gates were actually green when it shipped.
 ## Install
 
 ```sh
-# cargo (from crates.io — requires Rust, https://rustup.rs)
+# npm (prebuilt binary, no Rust toolchain needed)
+npm install -g think-and-ship
+
+# or cargo (builds from source — requires Rust, https://rustup.rs)
 cargo install think-and-ship
 
 # verify
@@ -76,12 +79,9 @@ attaches them to the GitHub release alongside a `SHA256SUMS` file; the npm
 package's postinstall downloads the one matching your platform and refuses
 any tarball whose checksum does not match.
 
-The npm registry still serves v0.1.1, which predates the unified server
-and fails on install. It drifted that far behind because the release
-pipeline could publish to crates.io without ever publishing to npm, and
-nothing reported the gap; both halves are now gated (`versions` in CI,
-plus the `Registry parity` workflow). The next release run lands npm at
-parity with crates.io. Until it does, install with cargo.
+npm and crates.io serve the same version, published from the same tag by
+the same pipeline run, and each npm tarball carries a signed provenance
+attestation tying it to the workflow that built it.
 
 ### Windows
 
