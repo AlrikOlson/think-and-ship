@@ -90,16 +90,22 @@ These secrets/config must exist on the GitHub repo before the automation works:
   The workflow filename is the one that runs `cargo publish` — `release-plz.yml`,
   **not** `release.yml`. `release.yml` only builds binaries and publishes to npm,
   and naming it here fails the OIDC audience check at publish time.
-- [ ] **`NPM_TOKEN` / npm provenance** — npm publish uses OIDC
-  (`id-token: write`) in `publish-npm`, so no secret is needed *if* the package
-  is configured for trusted publishing on npmjs.com. The repository was deleted
-  and recreated on 2026-08-15, which changed its numeric id (`1249598966` →
-  `1334775079`) while owner and name stayed the same; the provenance on 0.1.1
-  recorded the old id. Confirm the trusted publisher still resolves before
-  tagging, or add a token and a `NODE_AUTH_TOKEN` env on the publish step.
-- [ ] **README npm caveat** — the README Install section notes that npm still
-  serves the pre-merge v0.1.1. Delete that paragraph once `Registry parity` is
-  green, which is the same condition.
+- [x] **npm Trusted Publishing** — done, and there is **no `NPM_TOKEN` secret**.
+  `publish-npm` authenticates with OIDC (`id-token: write`).
+
+  Note the asymmetry, because guessing it wrong fails at publish time with a
+  bare `E404 ... or you do not have permission`, which reads like a missing
+  package rather than a rejected credential:
+
+  | Registry | Trusted publisher names |
+  |---|---|
+  | crates.io | `release-plz.yml` — the workflow that runs `cargo publish` |
+  | npm | `release.yml` — the workflow whose `publish-npm` job runs `npm publish` |
+
+  A failed npm auth still signs and logs a provenance statement first, since
+  that step only needs the GitHub OIDC identity. A signed provenance line in
+  the log is not evidence the publish succeeded.
+- [x] **README npm caveat** — removed; `Registry parity` is green at 0.4.0.
 
 ### How divergence is prevented now
 
