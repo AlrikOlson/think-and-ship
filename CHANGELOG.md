@@ -6,11 +6,7 @@ SemVer.
 
 ## [Unreleased]
 
-## [0.4.0](https://github.com/AlrikOlson/think-and-ship/compare/v0.3.0...v0.4.0) - 2026-08-15
-
-### Think-and-ship
-
-- unified MCP server for reasoning and execution tracking
+## [0.4.0] - 2026-08-15
 
 ### Changed (breaking)
 
