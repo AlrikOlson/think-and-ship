@@ -6,6 +6,12 @@ SemVer.
 
 ## [Unreleased]
 
+## [0.5.0](https://github.com/AlrikOlson/think-and-ship/compare/v0.4.0...v0.5.0) - 2026-08-15
+
+### Added
+
+- *(ship)* parse machine-readable test reports into structured check results ([#22](https://github.com/AlrikOlson/think-and-ship/pull/22))
+
 ## [0.4.0] - 2026-08-15
 
 ### Changed (breaking)
