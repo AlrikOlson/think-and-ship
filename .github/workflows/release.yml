@@ -1,0 +1,146 @@
+name: Release
+
+# Runs on a v* tag push — but a tag pushed by release-plz with the default
+# GITHUB_TOKEN cannot trigger this workflow (GitHub's anti-recursion rule),
+# which is how a release ends up with a changelog and no binaries. The
+# workflow_dispatch lane exists for exactly that case: dispatch with the
+# existing tag (gh workflow run release.yml -f tag=v0.3.0) and every job
+# builds from that tag and attaches to that tag's release, no re-tagging.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing v* tag to build and attach assets for"
+        required: true
+        type: string
+
+# The release and publish-npm jobs raise contents:write / id-token:write
+# for themselves; the default for every other job is read.
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # The tag being released: the dispatch input, or the pushed tag itself.
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      # Digest-pinned; dtolnay/rust-toolchain needs an explicit `toolchain:`
+      # once the ref no longer names one.
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      # Cross-compile setup for aarch64 Linux (build host is x86_64).
+      - name: Install cross-compile toolchain (aarch64 linux)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> "$GITHUB_ENV"
+
+      # ─── Unified binary: think-and-ship ─────────────────────────
+      # This is the canonical artifact npm/think-and-ship/install.js
+      # downloads and what `cargo install think-and-ship` builds.
+
+      - name: Build think-and-ship
+        run: cargo build --release --target ${{ matrix.target }} -p think-and-ship
+
+      - name: Package think-and-ship (unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          cd target/${{ matrix.target }}/release
+          tar czf "../../../think-and-ship-${RELEASE_TAG}-${{ matrix.target }}.tar.gz" think-and-ship
+
+      - name: Package think-and-ship (windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          cd target\${{ matrix.target }}\release
+          tar czf ..\..\..\think-and-ship-$env:RELEASE_TAG-${{ matrix.target }}.tar.gz think-and-ship.exe
+
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: binaries-${{ matrix.target }}
+          path: |
+            think-and-ship-*.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          merge-multiple: true
+
+      # One checksum file over every asset. npm/think-and-ship/install.js
+      # downloads this and refuses a tarball whose digest does not match.
+      - name: Generate SHA256SUMS
+        run: sha256sum -- *.tar.gz > SHA256SUMS
+
+      # release-plz creates the GitHub release for the tag with the
+      # per-version CHANGELOG body. softprops/action-gh-release upserts by
+      # tag, so here we only ATTACH the cross-platform binaries to that
+      # existing release — no `body_path`, so we never clobber release-plz's
+      # changelog body. (If a tag is ever pushed manually without release-plz,
+      # this still creates the release; it just won't have a curated body.)
+      - name: Attach binaries to GitHub release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          # Explicit so the workflow_dispatch lane targets the input tag's
+          # release rather than the ref the dispatch ran on.
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          files: |
+            think-and-ship-*.tar.gz
+            SHA256SUMS
+          generate_release_notes: false
+
+  publish-npm:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Publish think-and-ship
+        working-directory: npm/think-and-ship
+        run: npm publish --provenance --access public

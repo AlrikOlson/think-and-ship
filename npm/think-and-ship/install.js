@@ -1,0 +1,180 @@
+#!/usr/bin/env node
+
+const { execSync } = require("child_process");
+const fs = require("fs");
+const path = require("path");
+const os = require("os");
+const https = require("https");
+const crypto = require("crypto");
+
+const REPO = "AlrikOlson/think-and-ship";
+const VERSION = require("./package.json").version;
+const BIN_NAME = "think-and-ship";
+const BIN_DIR = path.join(__dirname, "bin");
+const BIN_EXT = os.platform() === "win32" ? ".exe" : "";
+
+function getPlatformKey() {
+  const platform = os.platform();
+  const arch = os.arch();
+  if (platform === "darwin" && arch === "arm64") return "aarch64-apple-darwin";
+  if (platform === "darwin" && arch === "x64") return "x86_64-apple-darwin";
+  if (platform === "linux" && arch === "x64") return "x86_64-unknown-linux-gnu";
+  if (platform === "linux" && arch === "arm64")
+    return "aarch64-unknown-linux-gnu";
+  if (platform === "win32" && arch === "x64") return "x86_64-pc-windows-msvc";
+  return null;
+}
+
+function tryCargoInstall() {
+  try {
+    execSync("cargo --version", { stdio: "ignore" });
+  } catch {
+    return false;
+  }
+  console.log(
+    `${BIN_NAME}: building from source with cargo (crates.io, a few minutes)...`
+  );
+  try {
+    execSync(
+      `cargo install ${BIN_NAME} --version "^${VERSION}" --root "${path.join(__dirname, ".cargo-install")}" 2>&1`,
+      { stdio: "inherit" }
+    );
+    const built = path.join(__dirname, ".cargo-install", "bin", BIN_NAME + BIN_EXT);
+    if (fs.existsSync(built)) {
+      fs.mkdirSync(BIN_DIR, { recursive: true });
+      const dest = path.join(BIN_DIR, BIN_NAME + BIN_EXT);
+      fs.copyFileSync(built, dest);
+      if (BIN_EXT === "") fs.chmodSync(dest, 0o755);
+      return true;
+    }
+  } catch (e) {
+    console.error(`${BIN_NAME}: cargo install failed: ${e.message}`);
+  }
+  return false;
+}
+
+function download(url) {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const opts = {
+      hostname: parsed.hostname,
+      path: parsed.pathname + parsed.search,
+      headers: { "User-Agent": "think-and-ship-installer" },
+    };
+    https
+      .get(opts, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          return download(res.headers.location).then(resolve, reject);
+        }
+        if (res.statusCode !== 200) {
+          return reject(new Error(`HTTP ${res.statusCode} for ${url}`));
+        }
+        const chunks = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () => resolve(Buffer.concat(chunks)));
+        res.on("error", reject);
+      })
+      .on("error", reject);
+  });
+}
+
+async function tryGithubRelease() {
+  const platformKey = getPlatformKey();
+  if (!platformKey) return false;
+
+  const assetPattern = `${BIN_NAME}-v`;
+  const assetSuffix = `-${platformKey}.tar.gz`;
+
+  console.log(`${BIN_NAME}: finding latest release...`);
+  try {
+    const meta = JSON.parse(
+      (await download(`https://api.github.com/repos/${REPO}/releases/latest`)).toString()
+    );
+    const asset = (meta.assets || []).find(
+      (a) => a.name.startsWith(assetPattern) && a.name.endsWith(assetSuffix)
+    );
+    if (!asset) {
+      console.error(
+        `${BIN_NAME}: no matching asset for ${platformKey} in release ${meta.tag_name}`
+      );
+      return false;
+    }
+    const sumsAsset = (meta.assets || []).find((a) => a.name === "SHA256SUMS");
+    if (!sumsAsset) {
+      console.error(
+        `${BIN_NAME}: release ${meta.tag_name} carries no SHA256SUMS; refusing the unverified download`
+      );
+      return false;
+    }
+    console.log(`${BIN_NAME}: downloading ${asset.name}...`);
+    const tarball = await download(asset.browser_download_url);
+    const sums = (await download(sumsAsset.browser_download_url)).toString("utf8");
+    const expected = sums
+      .split("\n")
+      .map((line) => line.trim().split(/\s+/))
+      .filter(([, name]) => name === asset.name)
+      .map(([hash]) => hash)[0];
+    const actual = crypto.createHash("sha256").update(tarball).digest("hex");
+    if (!expected || expected !== actual) {
+      console.error(
+        `${BIN_NAME}: checksum mismatch for ${asset.name}: expected ${expected || "(not listed)"}, got ${actual}; refusing to install it`
+      );
+      return false;
+    }
+    fs.mkdirSync(BIN_DIR, { recursive: true });
+    const tmpTar = path.join(os.tmpdir(), asset.name);
+    fs.writeFileSync(tmpTar, tarball);
+    execSync(`tar xzf "${tmpTar}" -C "${BIN_DIR}"`, { stdio: "ignore" });
+    fs.unlinkSync(tmpTar);
+    const binPath = path.join(BIN_DIR, BIN_NAME + BIN_EXT);
+    if (fs.existsSync(binPath)) {
+      if (BIN_EXT === "") fs.chmodSync(binPath, 0o755);
+      return true;
+    }
+  } catch (e) {
+    console.error(`${BIN_NAME}: download failed: ${e.message}`);
+  }
+  return false;
+}
+
+function isRealBinary(filePath) {
+  try {
+    const buf = fs.readFileSync(filePath);
+    if (buf.length < 1024) {
+      const head = buf.toString("utf8", 0, buf.length);
+      if (head.includes("binary not installed") || head.includes("npm rebuild")) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function main() {
+  const binPath = path.join(BIN_DIR, BIN_NAME + BIN_EXT);
+  if (fs.existsSync(binPath) && isRealBinary(binPath)) {
+    console.log(`${BIN_NAME}: binary already exists, skipping install`);
+    return;
+  }
+
+  if (await tryGithubRelease()) {
+    console.log(`${BIN_NAME}: installed prebuilt binary`);
+    return;
+  }
+
+  if (tryCargoInstall()) {
+    console.log(`${BIN_NAME}: built from source`);
+    return;
+  }
+
+  console.error(
+    `${BIN_NAME}: could not install the server binary.\n` +
+      `  No prebuilt binary matched this platform, and cargo is not available.\n` +
+      `  Fix: install Rust (https://rustup.rs), then run:\n` +
+      `    cargo install ${BIN_NAME} --version "^${VERSION}"\n` +
+      `Continuing so npm install itself does not fail; the CLI wrapper still works\n` +
+      `and \`${BIN_NAME} --check\` will report the missing binary.`
+  );
+}
+
+main();

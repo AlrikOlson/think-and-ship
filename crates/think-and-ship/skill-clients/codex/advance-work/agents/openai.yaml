@@ -1,0 +1,24 @@
+interface:
+  display_name: "Advance work"
+  short_description: "Do one unit of work in the current focus, then stop"
+  default_prompt: "Use $advance-work to do exactly one unit in my current focus."
+policy:
+  # Implicit invocation is ALLOWED. advance-work writes code, completes roadmap
+  # chunks and dispositions signals, and the guard against doing that unasked is
+  # the skill's own contract — one unit, the project's real gates, an honest
+  # receipt — not a lock on the door. Suppressing it here instead made the
+  # natural-language triggers the skill's own description advertises
+  # ("advance the current work", "next one") unreachable, which is a worse
+  # failure than the one it was guarding against.
+  allow_implicit_invocation: true
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "roadmap_focus_get"
+      description: "Load the focused workstream and mode for this caller"
+    - type: "mcp"
+      value: "roadmap_next"
+      description: "Find the next ready unit"
+    - type: "mcp"
+      value: "ship_check"
+      description: "Run a real gate and capture its exit code"

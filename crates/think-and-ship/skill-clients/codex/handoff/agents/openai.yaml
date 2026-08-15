@@ -1,0 +1,4 @@
+interface:
+  display_name: "Handoff"
+  short_description: "Produce a grounded project handoff"
+  default_prompt: "Use $handoff to prepare a concise handoff for the next session."

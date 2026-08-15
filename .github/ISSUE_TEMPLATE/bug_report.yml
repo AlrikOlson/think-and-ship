@@ -1,0 +1,32 @@
+name: Bug report
+description: Something behaves differently than documented
+labels: [bug]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`think-and-ship --version`, or the npm/crates.io version installed"
+      placeholder: "0.3.2"
+    validations:
+      required: true
+  - type: input
+    id: client
+    attributes:
+      label: MCP client
+      description: Which client is connected, if the bug involves the server
+      placeholder: "Claude Code 2.x / Cursor / none (CLI only)"
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened, and what did you expect?
+      description: The actual behavior and the expected one. A tool-call transcript or CLI output beats a description.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. …
+        2. …

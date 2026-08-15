@@ -1,0 +1,27 @@
+# Keep the build context small for `docker build -f docs/deploy/Dockerfile .`
+
+target/
+**/target/
+
+.git/
+.github/
+
+node_modules/
+**/node_modules/
+
+# Editor / OS noise
+.DS_Store
+.vscode/
+.idea/
+
+# Local-only planning
+ROADMAP.md
+
+# Generated viewer artifacts
+crates/think-and-ship-viewer/src-tauri/gen/
+crates/think-and-ship-viewer/dist/
+
+# Local config / build caches
+*.log
+*.swp
+*.swo

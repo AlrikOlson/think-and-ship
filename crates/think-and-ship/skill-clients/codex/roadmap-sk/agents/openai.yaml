@@ -1,0 +1,4 @@
+interface:
+  display_name: "Roadmap (Spec Kit)"
+  short_description: "Advance a roadmap chunk against its Spec Kit spec"
+  default_prompt: "Use $roadmap-sk to implement the next roadmap chunk against its Spec Kit artifacts."

@@ -1,0 +1,16 @@
+name: Feature request
+description: Something the project should do and does not
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do that currently does not work. The problem is more useful than a proposed design.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior (optional)
+      description: If you have a specific shape in mind, sketch it.

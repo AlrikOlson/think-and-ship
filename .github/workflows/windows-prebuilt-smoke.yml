@@ -1,0 +1,63 @@
+name: Windows prebuilt smoke
+
+# Proves the no-toolchain Windows install story: download the prebuilt
+# .exe from a release, verify it against SHA256SUMS, extract it with the
+# tar that ships in Windows 10+, and run it by absolute path — with no
+# Rust toolchain installed on the runner at any point. Dispatch-only on
+# purpose: it spends windows-latest minutes only when a human asks, and
+# it can only pass once the named release actually carries assets.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag whose Windows asset to smoke-test (e.g. v0.3.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ASSET: think-and-ship-${{ inputs.tag }}-x86_64-pc-windows-msvc.tar.gz
+    steps:
+      - name: Download the Windows asset + SHA256SUMS from the release
+        shell: pwsh
+        run: |
+          gh release download ${{ inputs.tag }} --repo ${{ github.repository }} `
+            --pattern $env:ASSET --pattern SHA256SUMS
+
+      - name: Verify the checksum before touching the tarball
+        shell: pwsh
+        run: |
+          $line = Select-String -Path SHA256SUMS -SimpleMatch $env:ASSET
+          if (-not $line) { Write-Error "SHA256SUMS has no entry for $env:ASSET"; exit 1 }
+          $expected = ($line.Line -split '\s+')[0].ToLower()
+          $actual = (Get-FileHash $env:ASSET -Algorithm SHA256).Hash.ToLower()
+          if ($expected -ne $actual) {
+            Write-Error "checksum mismatch: expected $expected, got $actual"
+            exit 1
+          }
+          Write-Output "checksum ok: $actual"
+
+      # The exe is invoked by absolute path, not through PATH — the same way
+      # a GUI-launched MCP client runs it. `doctor` exits 1 on a machine with
+      # no MCP config entry, so `init` runs first, exactly as the README says.
+      - name: Prebuilt exe answers by absolute path, no toolchain
+        shell: pwsh
+        run: |
+          tar xzf $env:ASSET
+          $exe = Join-Path $PWD "think-and-ship.exe"
+          & $exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory smoke-project | Out-Null
+          Set-Location smoke-project
+          $env:THINK_AND_SHIP_PERSIST = "true"
+          & $exe init
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $exe doctor
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

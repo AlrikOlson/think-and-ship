@@ -1,0 +1,37 @@
+# cargo-deny configuration — https://embarkstudios.github.io/cargo-deny/
+#
+# The graph covers the published crate (think-and-ship). The Tauri viewer is
+# excluded, matching the CI clippy/test
+# jobs: its GTK3/unic tree carries upstream unmaintained-crate advisories
+# that nothing we publish depends on.
+
+[graph]
+exclude = ["think-and-ship-viewer"]
+
+[advisories]
+yanked = "deny"
+
+[licenses]
+# Every license that appears in the shipping dependency tree, all permissive.
+# A new dependency with a license outside this list fails the check — add it
+# here deliberately, not by weakening the check.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "Unicode-3.0",
+    "Unlicense",
+]
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

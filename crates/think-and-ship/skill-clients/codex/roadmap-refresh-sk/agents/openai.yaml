@@ -1,0 +1,4 @@
+interface:
+  display_name: "Roadmap Refresh (Spec Kit)"
+  short_description: "Research and reshape a Spec Kit roadmap and its artifacts"
+  default_prompt: "Use $roadmap-refresh-sk to research and refresh the roadmap and its Spec Kit artifacts."

@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://think-and-ship.dev/contract/signal-envelope/v1.json",
+  "title": "Signal envelope (v1)",
+  "description": "The canonical, backend-agnostic wire form of a stakeholder Signal in the think-and-ship signals SaaS (Phase 30). This file is the SINGLE SOURCE OF TRUTH: the Rust core validates against it (serde + a schema test) and the TS edge generates its types from it (json-schema-to-typescript), so the two can never drift. A `SignalEnvelope` is a strict superset of the local `Signal` type (Phase 29a): the local fields are present unchanged, plus the cloud fields (`schema_version`, `tenant_id`, `idempotency_key`, `source`, `attribution`) every adapter must populate. See docs/SIGNAL_CONTRACT.md for the prose contract, the idempotency-key rule, the tenant-identity model, the OAuth 2.1 auth scheme, and the remote-MCP sync surface.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "tenant_id",
+    "kind",
+    "from",
+    "body",
+    "status",
+    "created",
+    "idempotency_key",
+    "source"
+  ],
+  "properties": {
+    "schema_version": {
+      "description": "Version of THIS envelope schema. Bumped only on a breaking envelope change, independently of any backend or local-Signal version. Pin to the integer-as-string form to mirror the dev.thinkandship `schema` convention in docs/SCHEMA.md.",
+      "type": "string",
+      "const": "1"
+    },
+    "id": {
+      "description": "Stable, globally-unique signal id (UUIDv4 minted by the first writer — the ingest adapter or the local agent). Distinct from `idempotency_key`: `id` identifies the record, `idempotency_key` identifies the upstream event so re-delivery of the same event collapses onto one record.",
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "tenant_id": {
+      "description": "The tenant this signal belongs to. EQUALS the local `resolve_project_id()` value (`<basename>-<6hex(cwd)>` or the THINK_AND_SHIP_PROJECT_NAME override), so the same cwd maps to the same cloud tenant and one tenant = one Durable Object. Cross-tenant reads are never permitted (see docs/SIGNAL_CONTRACT.md §Tenant isolation).",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._-]+$"
+    },
+    "kind": { "$ref": "#/$defs/SignalKind" },
+    "from": {
+      "description": "Human-facing attribution string (display name / handle / email local-part). The authenticated, structured identity lives in `attribution`; `from` is the always-present cheap label, mirroring the local Signal.from field.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "body": {
+      "description": "The signal content as submitted (plain text or Markdown). Adapters MUST NOT pre-summarize; enrichment is additive and lives in `enrichment[]`.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16384
+    },
+    "status": { "$ref": "#/$defs/SignalStatus" },
+    "created": {
+      "description": "When the signal was first created at its origin (RFC 3339 / ISO 8601, UTC). For adapter-sourced signals this is the upstream event time when known, else the ingest time.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated": {
+      "description": "Last mutation time (RFC 3339, UTC). Set by the canonical store on every write; absent on a freshly-created signal.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "idempotency_key": {
+      "description": "Lowercase hex SHA-256 that lets ANY adapter dedupe re-delivery of the same upstream event. Computed identically everywhere (see docs/SIGNAL_CONTRACT.md §Idempotency): sha256(tenant_id \\u241f source.adapter \\u241f source.external_id) when the adapter has a stable upstream id, else sha256(tenant_id \\u241f kind \\u241f from \\u241f body \\u241f created). \\u241f (U+241F) is the field separator. The canonical store treats a colliding key as a no-op upsert.",
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source": { "$ref": "#/$defs/Source" },
+    "attribution": { "$ref": "#/$defs/Attribution" },
+    "enrichment": {
+      "description": "Append-only enrichment trail produced by the agent churning on the signal (Phase 29d). Ordered oldest-first.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/Enrichment" }
+    },
+    "cross_refs": {
+      "description": "Typed cross-references into the think/ship/roadmap graph, in the existing `prefix:value` wire form (infra/cross_ref.rs), extended with the `signal:` variant (Phase 29b). Bidirectional: promoting a signal writes `chunk:<id>` here and `signal:<id>` onto the chunk.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/CrossRef" }
+    }
+  },
+  "$defs": {
+    "SignalKind": {
+      "description": "What kind of stakeholder input this is. Matches the local Signal vocabulary (Phase 29a).",
+      "type": "string",
+      "enum": ["question", "idea", "concern", "bug", "feedback"]
+    },
+    "SignalStatus": {
+      "description": "Lifecycle state. Legal transitions (enforced by the canonical store, mirroring the local engine): new\\u2192triaged\\u2192researched\\u2192surfaced\\u2192promoted; any non-terminal state \\u2192 dismissed. Backward transitions (e.g. researched\\u2192new) are rejected.",
+      "type": "string",
+      "enum": ["new", "triaged", "researched", "surfaced", "promoted", "dismissed"]
+    },
+    "Source": {
+      "description": "Which edge adapter produced the signal and the upstream coordinates needed to dedupe it (Phase 30c). `external_id` is the adapter's stable upstream identifier (GitHub issue node id, email Message-ID, webhook delivery id); when present it feeds the idempotency key.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["adapter", "received_at"],
+      "properties": {
+        "adapter": {
+          "type": "string",
+          "enum": ["webhook", "github_issue", "email", "submit_api", "mcp", "local"]
+        },
+        "external_id": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "received_at": {
+          "description": "When the edge accepted the inbound event (RFC 3339, UTC).",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "Attribution": {
+      "description": "Structured, optionally-authenticated identity of the submitter. Distinct from `from` (the cheap display label). `authenticated` is true only when the submitter proved identity via the tenant's auth (OAuth 2.1) rather than an anonymous public-submit path.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "display_name": { "type": "string", "maxLength": 256 },
+        "email": { "type": "string", "format": "email" },
+        "handle": { "type": "string", "maxLength": 256 },
+        "subject": {
+          "description": "The OAuth 2.1 access-token subject (`sub`) when the submitter authenticated.",
+          "type": "string",
+          "maxLength": 256
+        },
+        "authenticated": { "type": "boolean", "default": false }
+      }
+    },
+    "Enrichment": {
+      "description": "One agent enrichment record (Phase 29d): the reasoning step that motivated it, the external sources consulted, a summary, and a confidence. Append-only.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["summary", "confidence", "at"],
+      "properties": {
+        "think_step": {
+          "description": "The think_* step number that produced this enrichment (cross-ref into the reasoning trace).",
+          "type": "integer",
+          "minimum": 0
+        },
+        "sources": {
+          "description": "External references consulted (URLs, doc ids, ministr symbol ids).",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 8192 },
+        "confidence": {
+          "description": "Agent confidence in this enrichment, 0..1. The surfacing gate (Phase 29e) only raises researched signals above a threshold.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "at": {
+          "description": "When the enrichment was recorded (RFC 3339, UTC).",
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "CrossRef": {
+      "description": "A cross-reference in the existing wire form `prefix:value`. `prefix` is one of the think/ship/roadmap families plus `signal`. Mirrors infra/cross_ref.rs::CrossRef::from_wire so the same parser accepts it.",
+      "type": "string",
+      "pattern": "^(think|task|action|check|chunk|signal):.+$"
+    }
+  },
+  "examples": [
+    {
+      "schema_version": "1",
+      "id": "f1c9a4e2-6b3d-4f8a-9c21-0a7e5d2b8c44",
+      "tenant_id": "think-and-ship-676f38",
+      "kind": "feedback",
+      "from": "dana@acme.example",
+      "body": "The roadmap export drops sub-bullets when a chunk has nested acceptance notes.",
+      "status": "new",
+      "created": "2026-06-08T01:10:00Z",
+      "idempotency_key": "9f2c1b7a4e6d8c0f3a5b9e1d7c2f4a6b8d0e2c4f6a8b0d2e4c6f8a0b2d4e6c8f",
+      "source": {
+        "adapter": "github_issue",
+        "external_id": "I_kwDOABCDEF1234567890",
+        "received_at": "2026-06-08T01:10:03Z"
+      },
+      "attribution": {
+        "display_name": "Dana Okoye",
+        "handle": "danao",
+        "authenticated": true,
+        "subject": "auth0|653f1c9a4e6d8c0f3a5b9e1d"
+      },
+      "enrichment": [
+        {
+          "think_step": 867,
+          "sources": [
+            "https://github.com/cursor/agent-trace",
+            "sym-…roadmap::export::export_markdown"
+          ],
+          "summary": "Confirmed: export_markdown renders acceptance[] flat; nested notes are not modeled on Chunk. Maps to the done richer-roadmap-export chunk.",
+          "confidence": 0.82,
+          "at": "2026-06-08T01:12:00Z"
+        }
+      ],
+      "cross_refs": ["think:867", "chunk:richer-roadmap-export"]
+    }
+  ]
+}
