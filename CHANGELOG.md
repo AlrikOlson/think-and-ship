@@ -6,6 +6,8 @@ SemVer.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-15
+
 ### Changed (breaking)
 
 - **`connect` no longer has a built-in backend.** The cloud URL now comes from
