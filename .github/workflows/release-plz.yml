@@ -12,9 +12,13 @@ name: release-plz
 #
 # The tag in step 2 only triggers step 3 if release-plz authenticates with a
 # PAT / GitHub App token (secrets.RELEASE_PLZ_TOKEN). The default GITHUB_TOKEN
-# cannot trigger downstream workflows — GitHub's anti-recursion rule. If the
-# secret is unset the jobs fall back to GITHUB_TOKEN and the release still
-# happens, but you must push the tag manually to kick off release.yml.
+# cannot trigger downstream workflows — GitHub's anti-recursion rule.
+#
+# This used to fall back to GITHUB_TOKEN when RELEASE_PLZ_TOKEN was unset. The
+# fallback is what broke the pipeline: crates.io got 0.2.0 and 0.3.0 while npm
+# stayed on 0.1.1, because release-plz published and tagged, release.yml never
+# fired, and nothing failed. A half-release that reports success is worse than
+# no release, so the preflight below now STOPS instead of degrading.
 
 on:
   push:
@@ -36,10 +40,26 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Fail BEFORE publishing anything. crates.io publishes are permanent, so
+      # discovering the token is missing after the publish leaves a version
+      # that can never be un-shipped and an npm package that never catches up.
+      - name: Require a token that can trigger release.yml
+        env:
+          RELEASE_PLZ_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+        run: |
+          if [ -z "${RELEASE_PLZ_TOKEN}" ]; then
+            echo "::error::RELEASE_PLZ_TOKEN is not set."
+            echo "release-plz would publish to crates.io and push a tag using GITHUB_TOKEN,"
+            echo "which cannot trigger release.yml — no binaries, no npm publish, and no"
+            echo "failure anywhere. That is exactly how npm fell to 0.1.1 behind crates.io."
+            echo "Create a PAT with contents:write (docs/deploy/setup-release-plz-token.sh)"
+            echo "and add it as the RELEASE_PLZ_TOKEN repository secret."
+            exit 1
+          fi
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_PLZ_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
       # Digest-pinned; dtolnay/rust-toolchain needs an explicit `toolchain:`
       # once the ref no longer names one.
       - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
@@ -51,7 +71,7 @@ jobs:
         with:
           command: release
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   # Keeps the version-bump / changelog PR up to date on every push to main.
@@ -62,10 +82,25 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      # A release PR opened by GITHUB_TOKEN gets no CI runs, so the required
+      # checks never report and the ruleset can never let it merge. Stop here
+      # and say why, rather than opening a PR that is unmergeable by design.
+      - name: Require a token whose PRs can run CI
+        env:
+          RELEASE_PLZ_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+        run: |
+          if [ -z "${RELEASE_PLZ_TOKEN}" ]; then
+            echo "::error::RELEASE_PLZ_TOKEN is not set."
+            echo "A release PR opened with GITHUB_TOKEN never triggers CI, so the required"
+            echo "checks stay pending and the PR cannot merge. Create a PAT with"
+            echo "contents:write + pull-requests:write (docs/deploy/setup-release-plz-token.sh)"
+            echo "and add it as the RELEASE_PLZ_TOKEN repository secret."
+            exit 1
+          fi
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_PLZ_TOKEN || secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.RELEASE_PLZ_TOKEN }}
       # Digest-pinned; dtolnay/rust-toolchain needs an explicit `toolchain:`
       # once the ref no longer names one.
       - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
@@ -77,5 +112,5 @@ jobs:
         with:
           command: release-pr
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

@@ -141,6 +141,20 @@ jobs:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
+      # The TAG is the single source of truth for what version ships. The
+      # committed package.json is not consulted, because release-plz bumps
+      # Cargo.toml and nothing bumps package.json — trusting the committed
+      # value is how npm came to serve 0.1.1 while crates.io served 0.3.0.
+      # `versions` in ci.yml keeps the committed value honest; this keeps the
+      # PUBLISHED value honest even if that check is ever bypassed.
+      - name: Pin the package version to the release tag
+        working-directory: npm/think-and-ship
+        run: |
+          set -euo pipefail
+          version="${RELEASE_TAG#v}"
+          npm version "$version" --no-git-tag-version --allow-same-version
+          echo "publishing think-and-ship@$version"
+
       - name: Publish think-and-ship
         working-directory: npm/think-and-ship
         run: npm publish --provenance --access public

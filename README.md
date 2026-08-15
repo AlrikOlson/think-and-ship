@@ -77,8 +77,11 @@ package's postinstall downloads the one matching your platform and refuses
 any tarball whose checksum does not match.
 
 The npm registry still serves v0.1.1, which predates the unified server
-and fails on install. The repaired 0.3.x npm package ships with the next
-release run; until it does, install with cargo.
+and fails on install. It drifted that far behind because the release
+pipeline could publish to crates.io without ever publishing to npm, and
+nothing reported the gap; both halves are now gated (`versions` in CI,
+plus the `Registry parity` workflow). The next release run lands npm at
+parity with crates.io. Until it does, install with cargo.
 
 ### Windows
 
