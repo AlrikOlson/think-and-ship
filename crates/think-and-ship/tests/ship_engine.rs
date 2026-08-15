@@ -396,6 +396,8 @@ fn verified_check_records_command_and_exit_code() {
             true,
             Some("cargo test".into()),
             Some(0),
+            None,
+            None,
         )
         .unwrap();
     assert!(check.verified);
@@ -454,6 +456,8 @@ fn ship_all_complete() {
         true,
         Some("test".into()),
         Some(0),
+        None,
+        None,
     )
     .unwrap();
     e.complete_task("t1", vec![]).unwrap();
@@ -740,6 +744,8 @@ fn full_sdlc_flow() {
         true,
         Some("cargo test".into()),
         Some(0),
+        None,
+        None,
     )
     .unwrap();
     e.record_check_full(
@@ -752,6 +758,8 @@ fn full_sdlc_flow() {
         true,
         Some("cargo clippy".into()),
         Some(0),
+        None,
+        None,
     )
     .unwrap();
     e.complete_task("test", vec![]).unwrap();

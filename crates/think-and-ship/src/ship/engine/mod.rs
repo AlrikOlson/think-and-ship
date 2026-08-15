@@ -513,7 +513,7 @@ impl ShipEngine {
         required: bool,
     ) -> Result<&Check, String> {
         self.record_check_full(
-            task_id, check_type, name, passed, details, required, false, None, None,
+            task_id, check_type, name, passed, details, required, false, None, None, None, None,
         )
     }
 
@@ -529,6 +529,8 @@ impl ShipEngine {
         verified: bool,
         command: Option<String>,
         exit_code: Option<i32>,
+        report: Option<crate::ship::report::ReportRecord>,
+        results: Option<crate::ship::report::TestResults>,
     ) -> Result<&Check, String> {
         let tid = self.resolve_task_id(task_id)?;
         let idx = self.task_index(&tid)?;
@@ -541,6 +543,8 @@ impl ShipEngine {
             verified,
             command,
             exit_code,
+            report,
+            results,
             timestamp: Utc::now().to_rfc3339(),
         };
         self.tasks[idx].checks.push(check);

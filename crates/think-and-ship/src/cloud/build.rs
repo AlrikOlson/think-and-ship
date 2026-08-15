@@ -622,6 +622,8 @@ mod tests {
             command: None,
             exit_code: None,
             verified: true,
+            report: None,
+            results: None,
         };
 
         // The two families whose origin is an `Option` must SAY they are ours;
@@ -788,6 +790,8 @@ mod tests {
             verified: true,
             command: Some("cargo test".into()),
             exit_code: Some(0),
+            report: None,
+            results: None,
             timestamp: "2026-06-10T02:56:00Z".into(),
         };
         let check_env = from_check("think-and-ship-676f38", &cycle, "implement-x", 0, &check);

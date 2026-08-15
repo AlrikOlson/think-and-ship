@@ -133,6 +133,19 @@ pub struct CheckArgs {
     /// real result — the check is `verified` and cannot be faked.
     #[serde(default)]
     pub command: Option<String>,
+    /// A machine-readable report the runner was asked to emit, read after
+    /// `command` runs. Additive: a report problem never fails the check.
+    #[serde(default)]
+    pub report: Option<ReportArg>,
+}
+
+/// Where the runner was asked to write its machine-readable report.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ReportArg {
+    /// Report format key. Supported: "junit".
+    pub format: String,
+    /// Report file path, relative to the project directory.
+    pub path: String,
 }
 
 fn default_true() -> bool {
@@ -465,7 +478,7 @@ impl ShipService {
 
     #[tool(
         name = "ship_check",
-        description = "Record a quality gate result — a test run, lint pass, type check, build, code review, or manual verification.\n\nPREFER passing `command`: the server runs it, captures the real exit code, and sets passed/details/exit_code from the result. Such a check is `verified:true` and cannot be faked. Use self-reported `passed` only for gates that can't be expressed as a command (e.g. manual review).\n\nInputs: task_id (optional — defaults to active task), type ('test'|'lint'|'typecheck'|'build'|'review'|'manual'), name (required — e.g. 'cargo test'), command (optional shell command to run and verify), passed (bool — required only when no command is given), details (string), required (bool, default true).\n\nReturns: the recorded check incl. verified + exit_code.\n\nPitfalls: required checks that failed — or that passed but are only self-reported (verified:false) — are flagged when ship_finalize is called.",
+        description = "Record a quality gate result — a test run, lint pass, type check, build, code review, or manual verification.\n\nPREFER passing `command`: the server runs it, captures the real exit code, and sets passed/details/exit_code from the result. Such a check is `verified:true` and cannot be faked. Use self-reported `passed` only for gates that can't be expressed as a command (e.g. manual review).\n\nOptional `report` {format, path}: a machine-readable report file the runner was asked to emit (formats: 'junit'), parsed after the run into `results` (counts + failing test names) stored next to the exit code. Additive only — a missing or unparseable report never fails the check and never affects `verified`; the record says parsing did not happen. Never scrape stdout; ask the runner for a report file (e.g. cargo nextest's junit output, pytest --junit-xml).\n\nInputs: task_id (optional — defaults to active task), type ('test'|'lint'|'typecheck'|'build'|'review'|'manual'), name (required — e.g. 'cargo test'), command (optional shell command to run and verify), report (optional {format, path}), passed (bool — required only when no command is given), details (string), required (bool, default true).\n\nReturns: the recorded check incl. verified + exit_code (+ report/results when a report was requested).\n\nPitfalls: required checks that failed — or that passed but are only self-reported (verified:false) — are flagged when ship_finalize is called.",
         annotations(
             title = "Record check",
             read_only_hint = false,
@@ -505,6 +518,17 @@ impl ShipService {
                 }
             },
         };
+        // Read the report AFTER the command has run (so the file reflects
+        // this run), still before taking the lock. Total by contract: any
+        // report problem records `parsed:false` and cannot touch
+        // passed/verified (see crate::ship::report).
+        let (report, results) = match &args.report {
+            Some(r) => {
+                let (record, results) = crate::ship::report::read_report(&r.format, &r.path);
+                (Some(record), results)
+            }
+            None => (None, None),
+        };
         let mut engine = self.engine.lock().map_err(|_| Self::poisoned())?;
         match engine.record_check_full(
             args.task_id.as_deref(),
@@ -516,6 +540,8 @@ impl ShipService {
             verified,
             command,
             exit_code,
+            report,
+            results,
         ) {
             Ok(check) => Ok(Self::ok_structured(serde_json::to_value(check).unwrap())),
             Err(e) => Ok(Self::err_structured("invalid_state", e)),

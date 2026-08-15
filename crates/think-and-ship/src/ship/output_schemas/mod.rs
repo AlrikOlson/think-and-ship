@@ -81,6 +81,12 @@ pub struct CheckOutput {
     pub command: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exit_code: Option<i32>,
+    /// What happened with the requested report, when one was requested.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub report: Option<crate::ship::report::ReportRecord>,
+    /// Parsed summary — additive; the exit code stays the source of truth.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub results: Option<crate::ship::report::TestResults>,
     pub timestamp: String,
 }
 
