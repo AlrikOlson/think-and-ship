@@ -153,6 +153,28 @@ fn records(envelope: &Value) -> &Vec<Value> {
         .unwrap_or_else(|| panic!("expected records[], got {envelope}"))
 }
 
+/// Envelope size with volatile per-call timestamps normalized away.
+///
+/// `roadmap_get` includes `created_at`/`updated_at` in each returned record, and
+/// their RFC3339 rendering is precision-trimmed (`.1234` vs `.123400000`), so
+/// the byte length can vary across two otherwise-equivalent calls.
+fn normalized_payload_len(envelope: &Value) -> usize {
+    let mut normalized = envelope.clone();
+    if let Some(records) = normalized.get_mut("records").and_then(Value::as_array_mut) {
+        for record in records {
+            if let Some(obj) = record.as_object_mut() {
+                if obj.contains_key("created_at") {
+                    obj.insert("created_at".to_string(), json!("<timestamp>"));
+                }
+                if obj.contains_key("updated_at") {
+                    obj.insert("updated_at".to_string(), json!("<timestamp>"));
+                }
+            }
+        }
+    }
+    serde_json::to_vec(&normalized).expect("serializes").len()
+}
+
 /// THE CRITERION THAT NAMES AN MCP CLIENT: typed arrays cross the seam, and
 /// what comes back is the FULL record — the text `roadmap_status` cannot carry.
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -237,8 +259,8 @@ async fn a_repeated_id_is_answered_once_so_the_cap_bounds_what_it_claims() {
         "a duplicate is not an unknown id: {thrice}"
     );
     assert_eq!(
-        serde_json::to_vec(&thrice).expect("serializes").len(),
-        serde_json::to_vec(&once).expect("serializes").len(),
+        normalized_payload_len(&thrice),
+        normalized_payload_len(&once),
         "repeating an id must not grow the payload — that is exactly how the \
          original cap came to guard a bound 41% below the real worst case"
     );
