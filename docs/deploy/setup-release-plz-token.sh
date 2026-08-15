@@ -11,11 +11,15 @@
 # GitHub has no API to *create* a PAT, so the token value comes from you
 # (a 30-second web step) or an env var; everything else is automated.
 #
+# Runs on macOS, Linux, and Windows (Git Bash / MSYS2). On Windows invoke it
+# through bash — `bash docs/deploy/setup-release-plz-token.sh` — since
+# PowerShell will not execute a shell script directly.
+#
 # Usage:
-#   docs/deploy/setup-release-plz-token.sh                 # interactive: opens the PAT page, paste it
-#   RELEASE_PLZ_TOKEN=ghp_xxx docs/deploy/setup-release-plz-token.sh   # non-interactive (CI)
-#   docs/deploy/setup-release-plz-token.sh --from-gh-token # reuse your gh CLI token (see warning)
-#   docs/deploy/setup-release-plz-token.sh --force         # replace an existing secret
+#   bash docs/deploy/setup-release-plz-token.sh                 # interactive: opens the PAT page, paste it
+#   RELEASE_PLZ_TOKEN=ghp_xxx bash docs/deploy/setup-release-plz-token.sh   # non-interactive (CI)
+#   bash docs/deploy/setup-release-plz-token.sh --from-gh-token # reuse your gh CLI token (see warning)
+#   bash docs/deploy/setup-release-plz-token.sh --force         # replace an existing secret
 set -euo pipefail
 
 SECRET="RELEASE_PLZ_TOKEN"
@@ -48,8 +52,32 @@ gh auth status >/dev/null 2>&1 || {
 # Resolve the repo (slug) from the current checkout, falling back to the canonical one.
 REPO="${THINK_AND_SHIP_REPO:-$(gh repo view --json nameWithOwner -q .nameWithOwner 2>/dev/null || echo AlrikOlson/think-and-ship)}"
 
+# Ask the API directly rather than grepping `gh secret list`: the list output
+# is a human table whose columns and line endings vary by gh version and
+# platform (CRLF under Git Bash), and a prefix grep would also match a secret
+# merely NAMED like ours. 200 = exists, 404 = does not.
 secret_exists() {
-  gh secret list --repo "$REPO" 2>/dev/null | grep -q "^${SECRET}[[:space:]]"
+  gh api "repos/${REPO}/actions/secrets/${SECRET}" >/dev/null 2>&1
+}
+
+# Open a URL in the user's browser, or say nothing and let the printed URL
+# stand. macOS has `open`, Linux desktops `xdg-open`, WSL `wslview`; Windows
+# has none of them, which is why the browser step used to be a silent no-op
+# under Git Bash. `explorer.exe` exits non-zero even when it succeeds, so
+# every branch is `|| true` and the URL is printed either way.
+open_url() {
+  _url="$1"
+  if command -v open >/dev/null 2>&1; then
+    open "$_url" >/dev/null 2>&1 || true
+  elif command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$_url" >/dev/null 2>&1 || true
+  elif command -v wslview >/dev/null 2>&1; then
+    wslview "$_url" >/dev/null 2>&1 || true
+  elif command -v powershell.exe >/dev/null 2>&1; then
+    powershell.exe -NoProfile -Command "Start-Process '$_url'" >/dev/null 2>&1 || true
+  elif command -v explorer.exe >/dev/null 2>&1; then
+    explorer.exe "$_url" >/dev/null 2>&1 || true
+  fi
 }
 
 # ── Idempotency ──────────────────────────────────────────────────────────────
@@ -80,18 +108,30 @@ if [ -z "$token" ]; then
   url="https://github.com/settings/tokens/new?scopes=repo,workflow&description=release-plz%20(${REPO##*/})"
   echo "Create a classic PAT with the 'repo' + 'workflow' scopes (pre-filled):"
   echo "  $url"
-  if command -v open >/dev/null 2>&1; then
-    open "$url" >/dev/null 2>&1 || true
-  elif command -v xdg-open >/dev/null 2>&1; then
-    xdg-open "$url" >/dev/null 2>&1 || true
-  fi
+  open_url "$url"
   printf "Paste the token (input hidden), then Enter: "
-  read -rs token
-  echo
+  # -s is a bash extension; it works in Git Bash but not under `sh script.sh`.
+  # Fall back to a visible prompt rather than failing to read anything at all.
+  if read -rs token 2>/dev/null; then
+    echo
+  else
+    read -r token
+  fi
 fi
 
 [ -n "$token" ] || {
   echo "no token provided — aborting." >&2
+  exit 1
+}
+
+# Strip surrounding whitespace and any CR. A token pasted into a Windows
+# terminal, or read from a CRLF-ended env file, otherwise gets stored with a
+# trailing \r — and the secret then fails authentication with no useful error,
+# which is the worst possible way for this to go wrong.
+token="$(printf '%s' "$token" | tr -d '\r\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')"
+
+[ -n "$token" ] || {
+  echo "the token was empty after trimming whitespace — aborting." >&2
   exit 1
 }
 
@@ -102,6 +142,7 @@ if secret_exists; then
   echo "✓ ${SECRET} configured on ${REPO}."
   echo "  release-plz will now push tags that trigger release.yml (binaries + npm)."
 else
-  echo "gh reported success but ${SECRET} is not listed — check 'gh secret list --repo ${REPO}'." >&2
+  echo "gh reported success but ${SECRET} does not exist on ${REPO} — check" >&2
+  echo "  gh api repos/${REPO}/actions/secrets/${SECRET}" >&2
   exit 1
 fi
