@@ -35,7 +35,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "serd
 owo-colors = "4"
 uuid = { version = "1", features = ["v4"] }
 thiserror = "2"
-sha2 = "0.10"
+sha2 = "0.11"
 # Dyn-compatible async traits for the tracker port (tracker-port-seam). Native
 # `async fn` in traits is stable but still NOT dyn-compatible
 # (rust-lang/rust#133119), and `Box<dyn TrackerPort>` is what keeps the provider
