@@ -57,10 +57,22 @@ These secrets/config must exist on the GitHub repo before the automation works:
   absent, which published a half-release and reported success. **They now stop
   with an explanatory error instead**, before anything reaches crates.io — a
   crates.io publish is permanent, so failing afterwards is not a recovery.
-  - **Quick setup (idempotent):** `docs/deploy/setup-release-plz-token.sh` —
-    opens the pre-filled PAT page, then sets the secret via `gh`. Re-running is
-    a no-op once it exists. Non-interactive: `RELEASE_PLZ_TOKEN=ghp_xxx
-    docs/deploy/setup-release-plz-token.sh`.
+  - **Quick setup (idempotent):** opens the pre-filled PAT page, then sets the
+    secret via `gh`. Re-running is a no-op once the secret exists; `--force` /
+    `-Force` replaces it.
+
+    | Platform | Command | Non-interactive |
+    |---|---|---|
+    | macOS, Linux | `bash docs/deploy/setup-release-plz-token.sh` | `RELEASE_PLZ_TOKEN=ghp_xxx bash docs/deploy/...sh` |
+    | Windows | `.\docs\deploy\setup-release-plz-token.ps1` | `.\docs\deploy\...ps1 -Token ghp_xxx` |
+
+    Use the `.ps1` on Windows. The `.sh` runs under Git Bash, but `bash` in
+    PowerShell can resolve to WSL's bash depending on PATH, which pulls a whole
+    Linux environment into a two-command task.
+
+  - **Or skip the script.** It only automates a browser open and one `gh` call.
+    `gh secret set RELEASE_PLZ_TOKEN` prompts for the value with hidden input
+    and works identically from any shell.
 - [ ] **`CARGO_REGISTRY_TOKEN` secret** — crates.io API token. Already configured
   (set during the v0.1.x release prep); reused as-is by release-plz.
 - [ ] **`NPM_TOKEN` / npm provenance** — npm publish uses OIDC
