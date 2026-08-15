@@ -237,9 +237,32 @@ fn description_bytes(svc: &UnifiedService) -> usize {
 /// schemas, which is its own chunk
 /// (`chunk-output-schema-is-a-partial-projection`). Doing that work would buy
 /// back far more than this move spent.
+///
+/// # The line moved a fifth time, on 2026-08-15, for structured check results
+///
+/// 154,000 -> 157,000, for `ship_check`'s `report` argument
+/// (structured-test-results, issue #21).
+///
+/// WHAT WAS MEASURED. Before the chunk: 153,587 B, headroom 413 B — nothing
+/// fits under that. First draft landed at 157,279; trimming the description
+/// prose and moving every rationale line in the new report types from `///`
+/// to `//` (the GetArgs discipline) brought it to **156,363 B, +2,776 over
+/// the old line**. The remaining cost splits as ~900 B of input surface
+/// (the `report {format, path}` arg + the description clauses an agent must
+/// know BEFORE calling — that a report problem never fails the check, and
+/// that stdout is never scraped) and ~1,900 B of `ship_check` outputSchema
+/// (ReportRecord + TestResults + TestFailure), which the model never pays.
+///
+/// WHY NOT ZERO. The degradation contract has to be stated where the call is
+/// formed: an agent that doesn't know a missing report is safe will not ask
+/// for one, and the whole feature exists so a red gate can name the failing
+/// test instead of the agent re-running the suite to find out.
+///
+/// The outputSchema-duplication note above still stands as the real place to
+/// reclaim surface; this raise does not spend it.
 #[test]
 fn tools_list_payload_stays_within_budget() {
-    const BUDGET: usize = 154_000;
+    const BUDGET: usize = 157_000;
     let svc = build_unified();
     let actual = tools_list_bytes(&svc);
     assert!(
@@ -247,11 +270,11 @@ fn tools_list_payload_stays_within_budget() {
         "tools/list is {actual} bytes, over the {BUDGET}-byte budget (was 87,897 when \
          the surface-size decision chose option D, 135,524 B after the outputSchema work, \
          143,967 B after the approval-gate verbs, 150,728 B after roadmap_get, 153,630 B \
-         after the focus verbs). Re-decide the surface rather than raising this — the line \
-         has moved exactly four times, with every argument written above. Before proposing \
-         a fifth, read the outputSchema note: 56% of this payload is outputSchema and much \
-         of it is duplicated, so there is real surface to reclaim before there is a reason \
-         to move the line again."
+         after the focus verbs, 156,363 B after ship_check's structured report). Re-decide \
+         the surface rather than raising this — the line has moved exactly five times, with \
+         every argument written above. Before proposing a sixth, read the outputSchema \
+         note: over half of this payload is outputSchema and much of it is duplicated, so \
+         there is real surface to reclaim before there is a reason to move the line again."
     );
 }
 
@@ -960,17 +983,29 @@ fn the_known_schema_gap_stays_closed() {
 /// carried one, the wire figure would have grown another 1,096 B while this
 /// figure stayed put — outputSchema never reaches the model. The two budgets
 /// disagreeing here is the split doing exactly what it was built for.
+///
+/// # The companion line, moved on 2026-08-15 with the wire ceiling
+///
+/// 57,000 -> 58,500, for `ship_check`'s `report` argument
+/// (structured-test-results, issue #21). Same decision as the wire raise
+/// above, measured on this axis: headroom before the chunk was 179 B, the
+/// trimmed landing figure is **57,915 B, +1,094**. What the model pays for is
+/// the `report {format, path}` input schema plus the description clauses it
+/// must know before forming the call — that the exit code stays the source of
+/// truth, that a report problem degrades instead of failing the check, and
+/// that stdout is never scraped. Those are refusal-contract prose of exactly
+/// the kind the focus-verbs raise defended; a schema cannot carry them.
 #[test]
 fn model_facing_tool_surface_stays_lean() {
-    const BUDGET: usize = 57_000;
+    const BUDGET: usize = 58_500;
     let svc = build_unified();
     let actual = model_facing_bytes(&svc);
     assert!(
         actual <= BUDGET,
         "model-facing tool surface is {actual} bytes (~{} tokens), over the {BUDGET}-byte \
          budget (was 46,047 when the budget was split from the wire figure, 54,285 before \
-         the focus verbs). This is the number an agent pays on every session — argue for \
-         it before raising it.",
+         the focus verbs, 56,821 before ship_check's structured report). This is the number \
+         an agent pays on every session — argue for it before raising it.",
         actual / 4
     );
 }

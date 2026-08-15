@@ -33,5 +33,16 @@ pub struct Check {
     /// Exit code of the executed command (None if it couldn't be spawned).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub exit_code: Option<i32>,
+    /// What happened with the machine-readable report the caller asked for,
+    /// when one was asked for. Present even when parsing failed, so the
+    /// record says explicitly that parsing did not happen — a parse failure
+    /// never fails the check and never flips `verified` (see
+    /// [`crate::ship::report`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub report: Option<crate::ship::report::ReportRecord>,
+    /// The structured summary parsed from that report. Additive detail: the
+    /// exit code stays the source of truth for `passed`/`verified`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub results: Option<crate::ship::report::TestResults>,
     pub timestamp: String,
 }

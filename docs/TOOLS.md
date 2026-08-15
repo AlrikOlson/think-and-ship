@@ -47,7 +47,7 @@ ship_set_objective → ship_plan → ship_start → ship_record → ship_check �
 | `ship_record`         | Log an action (code, test, debug, research, review)    |
 | `ship_complete`       | Close a task with artifacts                            |
 | `ship_block`          | Mark a task blocked                                    |
-| `ship_check`          | Record a quality gate (test, lint, build, review)      |
+| `ship_check`          | Record a quality gate (test, lint, build, review); optional `report` {format, path} parses a machine-readable test report (JUnit XML) into structured results next to the exit code |
 | `ship_finalize`       | Finalize the objective and emit the ship report        |
 | `ship_status`         | Full state snapshot (recovery after context loss)      |
 | `ship_export`         | Export the execution trace                             |

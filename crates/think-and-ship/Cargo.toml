@@ -53,6 +53,7 @@ tokio-tungstenite = { version = "0.29.0", default-features = false, features = [
 futures-util = { version = "0.3.32", default-features = false, features = ["sink", "std"] }
 chacha20poly1305 = "0.10"
 base64 = "0.22"
+quick-xml = "0.41"
 
 [dev-dependencies]
 tempfile = "3"

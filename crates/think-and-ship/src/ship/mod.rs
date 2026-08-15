@@ -12,5 +12,6 @@ pub mod gate;
 pub mod mcp;
 pub mod output_schemas;
 pub mod persistence;
+pub mod report;
 
 pub use mcp::service::ShipService;
