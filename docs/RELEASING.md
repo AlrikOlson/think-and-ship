@@ -73,8 +73,23 @@ These secrets/config must exist on the GitHub repo before the automation works:
   - **Or skip the script.** It only automates a browser open and one `gh` call.
     `gh secret set RELEASE_PLZ_TOKEN` prompts for the value with hidden input
     and works identically from any shell.
-- [ ] **`CARGO_REGISTRY_TOKEN` secret** — crates.io API token. Already configured
-  (set during the v0.1.x release prep); reused as-is by release-plz.
+- [ ] **crates.io Trusted Publishing** — no `CARGO_REGISTRY_TOKEN` secret. The
+  `release-plz release` job mints an OIDC token (`id-token: write`), exchanges
+  it via `rust-lang/crates-io-auth-action` for a short-lived crates.io token,
+  and that action revokes it in its post step. Configure it on crates.io under
+  the crate's Settings → Trusted Publishing:
+
+  | Field | Value |
+  |---|---|
+  | Publisher | GitHub |
+  | Repository owner | `AlrikOlson` |
+  | Repository name | `think-and-ship` |
+  | Workflow filename | **`release-plz.yml`** |
+  | Environment name | *(blank)* |
+
+  The workflow filename is the one that runs `cargo publish` — `release-plz.yml`,
+  **not** `release.yml`. `release.yml` only builds binaries and publishes to npm,
+  and naming it here fails the OIDC audience check at publish time.
 - [ ] **`NPM_TOKEN` / npm provenance** — npm publish uses OIDC
   (`id-token: write`) in `publish-npm`, so no secret is needed *if* the package
   is configured for trusted publishing on npmjs.com. The repository was deleted

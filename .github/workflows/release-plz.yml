@@ -39,6 +39,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # crates.io Trusted Publishing: the OIDC token this mints is exchanged
+      # for a short-lived, auto-revoked crates.io token. That replaces a
+      # long-lived CARGO_REGISTRY_TOKEN secret, which could not be scoped to a
+      # single workflow and had to be rotated by hand.
+      id-token: write
     steps:
       # Fail BEFORE publishing anything. crates.io publishes are permanent, so
       # discovering the token is missing after the publish leaves a version
@@ -66,13 +71,25 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      # Exchanges the job's OIDC identity for a temporary crates.io token,
+      # revoked by the action's own post step when the job ends. The trusted
+      # publisher on crates.io must name THIS workflow file (release-plz.yml) —
+      # it is the one that runs `cargo publish`, not release.yml, which only
+      # builds binaries and publishes to npm.
+      #
+      # Pinned to v1.0.5: the repository has no floating `v1` tag to track.
+      - name: Authenticate with crates.io
+        id: crates-auth
+        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
+
       - name: Run release-plz release
         uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9 # v0.5
         with:
           command: release
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates-auth.outputs.token }}
 
   # Keeps the version-bump / changelog PR up to date on every push to main.
   release-plz-pr:
@@ -112,5 +129,8 @@ jobs:
         with:
           command: release-pr
         env:
+          # No crates.io credential here: release-pr only reads the public
+          # index to decide what is already published, and it does not publish.
+          # Demonstrated — this job succeeded with no crates.io token at all
+          # while the secret was absent.
           GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
