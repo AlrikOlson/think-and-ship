@@ -1,0 +1,61 @@
+name: Registry parity
+
+# crates.io and npm ship the SAME binary under the same version. They are
+# published by two different jobs, and for two releases they silently fell out
+# of step: crates.io reached 0.3.0 while npm still served 0.1.1, a build that
+# predates the unified server and fails on install. Nothing was watching, so
+# nothing reported it.
+#
+# This is the watch. It compares what the registries actually serve — not what
+# the repo intends — and fails loudly when they disagree. ci.yml's `versions`
+# job covers the in-repo half.
+
+on:
+  schedule:
+    # Daily. Divergence is only introduced by a release, but a release that
+    # half-fails is exactly the case where nobody is looking at the run.
+    - cron: "17 9 * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "crates/think-and-ship/Cargo.toml"
+      - "npm/think-and-ship/package.json"
+      - ".github/workflows/registry-parity.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - name: crates.io and npm serve the same version
+        run: |
+          set -euo pipefail
+
+          repo_v=$(node -p "require('./npm/think-and-ship/package.json').version")
+
+          crates_v=$(curl -sSf \
+            -H 'User-Agent: think-and-ship-parity (https://github.com/AlrikOlson/think-and-ship)' \
+            https://crates.io/api/v1/crates/think-and-ship \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).crate.max_stable_version))')
+
+          npm_v=$(curl -sSf https://registry.npmjs.org/think-and-ship \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s)["dist-tags"].latest))')
+
+          echo "repo:      $repo_v"
+          echo "crates.io: $crates_v"
+          echo "npm:       $npm_v"
+
+          if [ "$crates_v" != "$npm_v" ]; then
+            echo "::error::registry divergence — crates.io serves $crates_v, npm serves $npm_v."
+            echo "They ship the same binary. Re-run the release for the newer tag:"
+            echo "  gh workflow run release.yml -f tag=v$crates_v"
+            echo "npm refuses duplicate versions, so a re-dispatch is safe when npm is behind."
+            exit 1
+          fi
+
+          echo "registries agree on $crates_v"

@@ -46,14 +46,17 @@ a crates.io package).
 These secrets/config must exist on the GitHub repo before the automation works:
 
 - [ ] **`RELEASE_PLZ_TOKEN` secret** — a fine-grained PAT (or GitHub App token)
-  with `contents: write` + `pull-requests: write`. **This is load-bearing:**
-  GitHub does **not** fire downstream workflows for events created with the
-  default `GITHUB_TOKEN` (anti-recursion rule). Without this PAT, release-plz
+  with `contents: write` + `pull-requests: write`. **The whole cascade rests on
+  this:** GitHub does **not** fire downstream workflows for events created with
+  the default `GITHUB_TOKEN` (anti-recursion rule). Without this PAT, release-plz
   pushes the tag but **release.yml never runs** — the release ends up with a
   changelog and zero binaries (this is exactly what happened to v0.2.0 and
-  v0.3.0). The workflows fall back to `GITHUB_TOKEN` if the secret is absent
-  (publish still happens; the cascade does not). The recovery is the backfill
-  dispatch below — no re-tagging.
+  v0.3.0, and it is why npm sat on 0.1.1 while crates.io reached 0.3.0).
+
+  Both release-plz jobs used to fall back to `GITHUB_TOKEN` when the secret was
+  absent, which published a half-release and reported success. **They now stop
+  with an explanatory error instead**, before anything reaches crates.io — a
+  crates.io publish is permanent, so failing afterwards is not a recovery.
   - **Quick setup (idempotent):** `docs/deploy/setup-release-plz-token.sh` —
     opens the pre-filled PAT page, then sets the secret via `gh`. Re-running is
     a no-op once it exists. Non-interactive: `RELEASE_PLZ_TOKEN=ghp_xxx
@@ -61,11 +64,29 @@ These secrets/config must exist on the GitHub repo before the automation works:
 - [ ] **`CARGO_REGISTRY_TOKEN` secret** — crates.io API token. Already configured
   (set during the v0.1.x release prep); reused as-is by release-plz.
 - [ ] **`NPM_TOKEN` / npm provenance** — npm publish uses OIDC
-  (`id-token: write`) in `publish-npm`; confirm the npm package is configured
-  for trusted publishing or add a token.
-- [ ] **README npm caveat** — the README Install section says the npm
-  registry still serves the pre-merge v0.1.1. Delete that paragraph when the
-  first 0.3.x npm publish lands.
+  (`id-token: write`) in `publish-npm`, so no secret is needed *if* the package
+  is configured for trusted publishing on npmjs.com. The repository was deleted
+  and recreated on 2026-08-15, which changed its numeric id (`1249598966` →
+  `1334775079`) while owner and name stayed the same; the provenance on 0.1.1
+  recorded the old id. Confirm the trusted publisher still resolves before
+  tagging, or add a token and a `NODE_AUTH_TOKEN` env on the publish step.
+- [ ] **README npm caveat** — the README Install section notes that npm still
+  serves the pre-merge v0.1.1. Delete that paragraph once `Registry parity` is
+  green, which is the same condition.
+
+### How divergence is prevented now
+
+Two gates, because the failure was silent in two different places:
+
+| Gate | Where | Catches |
+|---|---|---|
+| `versions` | `ci.yml`, every PR | `Cargo.toml` and `npm/think-and-ship/package.json` disagreeing in the repo |
+| `Registry parity` | `registry-parity.yml`, daily + on version-file changes | crates.io and npm serving different versions |
+
+Plus two things that can no longer silently degrade: release-plz **fails** when
+`RELEASE_PLZ_TOKEN` is missing rather than falling back, and `publish-npm`
+sets the package version from the **release tag** rather than trusting the
+committed `package.json`.
 
 ## Homebrew tap (USER ACTION)
 
