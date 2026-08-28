@@ -279,10 +279,17 @@ impl RoadmapEngine {
 
     /// Attach a persistence handle, loading any prior roadmap for this project
     /// off disk first (so state accumulates across conversations).
+    ///
+    /// Reports through `tracing`, never on stderr directly: this runs inside
+    /// whatever process embeds the engine — an in-process host reloads the
+    /// roadmap between turns while its terminal is in raw mode, where an
+    /// unconditional `eprintln!` lands on the alternate screen. The load is
+    /// `info!` (narration; `RUST_LOG=info` shows it) and the one-time repairs
+    /// are `warn!` (stored data that did not hold an invariant).
     pub fn with_persistence(mut self, persistence: Persistence) -> Self {
         match persistence.load::<Roadmap>(&self.project_id) {
             Ok(Some(loaded)) => {
-                eprintln!(
+                tracing::info!(
                     "think-and-ship: loaded roadmap with {} chunk(s) from disk",
                     loaded.chunks.len()
                 );
@@ -296,10 +303,10 @@ impl RoadmapEngine {
         // and the known specimens predate the add-door rejection.
         let (minted, removed) = self.repair_missing_ids();
         if minted > 0 {
-            eprintln!("think-and-ship: minted an id for {minted} chunk(s) that had none");
+            tracing::warn!("think-and-ship: minted an id for {minted} chunk(s) that had none");
         }
         if removed > 0 {
-            eprintln!("think-and-ship: removed {removed} contentless chunk(s) that had no id");
+            tracing::warn!("think-and-ship: removed {removed} contentless chunk(s) that had no id");
         }
         // Every chunk written before `name` existed loads without one. Filling
         // them here — after the store is attached, so the fill persists — is
@@ -307,13 +314,13 @@ impl RoadmapEngine {
         // not just of the ones added from now on.
         let filled = self.backfill_names();
         if filled > 0 {
-            eprintln!("think-and-ship: named {filled} chunk(s) that had no name");
+            tracing::warn!("think-and-ship: named {filled} chunk(s) that had no name");
         }
         // After the fill, because a name seeded a moment ago can collide the
         // same way a name seeded a year ago does.
         let separated = self.repair_label_collisions();
         if separated > 0 {
-            eprintln!(
+            tracing::warn!(
                 "think-and-ship: relabeled {separated} chunk(s) whose derived labels collided"
             );
         }

@@ -32,6 +32,17 @@
 //!
 //! **(C) CLI output for a human.** `src/cli/`, `src/main.rs`.
 //!
+//! **(D) Library narration on an embedder's hot path.** The roadmap engine's
+//! `with_persistence` — the load banner and its one-time repairs. This is the
+//! one narration site that runs inside a process this crate does not own: an
+//! in-process host (Magistr's cockpit) re-opens the roadmap between agent turns
+//! while its terminal is in raw mode on the alternate screen, and an
+//! unconditional `eprintln!` there is not a diagnostic, it is a screen
+//! scribble the host cannot opt out of. So it goes through `tracing` (`info!`
+//! for the load, `warn!` for the repairs) and the MCP binary's operator sees
+//! the load again with `RUST_LOG=info`. `library_load_narration_stays_on_tracing`
+//! holds that decision the way the (B) test holds its opposite.
+//!
 //! # Why (B) stays `eprintln!` — the trap that is specific to this crate
 //!
 //! Narration is INFO-shaped, so the obvious move is `tracing::info!`. That
@@ -175,7 +186,6 @@ fn narration_is_never_demoted_to_a_level_the_default_filter_deletes() {
         ("think/engine/sessions.rs", "expired and removed"),
         ("think/engine/process.rs", "History trimmed to"),
         ("think/engine/numbering.rs", "Renumbered"),
-        ("roadmap/engine/mod.rs", "loaded roadmap with"),
         ("signal/engine.rs", "signal(s) from disk"),
         ("ship/engine/mod.rs", "task(s) from disk"),
         ("think/persistence.rs", "from the legacy _default history"),
@@ -197,6 +207,33 @@ fn narration_is_never_demoted_to_a_level_the_default_filter_deletes() {
              became info!/debug! it now prints NOWHERE: below EnvFilter(\"warn\") \
              on stderr and below the WARN+ fence for OTLP. If it became warn! it \
              is being reported to the operator as a problem."
+        );
+    }
+}
+
+/// Population (D): the roadmap load runs inside an embedder's process and must
+/// never print on stderr directly — the reverse pin of the narration test.
+#[test]
+fn library_load_narration_stays_on_tracing() {
+    let text = src("roadmap/engine/mod.rs");
+    let lines: Vec<&str> = text.lines().collect();
+    for (needle, level) in [
+        ("loaded roadmap with", "tracing::info!"),
+        ("minted an id for", "tracing::warn!"),
+        ("contentless chunk(s) that had no id", "tracing::warn!"),
+        ("chunk(s) that had no name", "tracing::warn!"),
+        ("whose derived labels collided", "tracing::warn!"),
+    ] {
+        let at = lines
+            .iter()
+            .position(|l| l.contains(needle) && !l.trim_start().starts_with("//"))
+            .unwrap_or_else(|| panic!("roadmap/engine/mod.rs no longer emits {needle:?}"));
+        let site = lines[at.saturating_sub(2)..=at].join(" ");
+        assert!(
+            site.contains(level) && !site.contains("eprintln!"),
+            "roadmap/engine/mod.rs emits {needle:?} through something other than \
+             {level}. An in-process host reloads the roadmap with its terminal in \
+             raw mode; an eprintln! there scribbles the alternate screen."
         );
     }
 }
