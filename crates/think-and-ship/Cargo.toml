@@ -52,7 +52,7 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 tokio-tungstenite = { version = "0.29.0", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
 futures-util = { version = "0.3.32", default-features = false, features = ["sink", "std"] }
 chacha20poly1305 = "0.10"
-base64 = "0.22"
+base64 = "0.23"
 quick-xml = "0.41"
 
 [dev-dependencies]
@@ -60,10 +60,15 @@ tempfile = "3"
 pretty_assertions = "1"
 # Validates Rust-built cloud envelopes against the canonical
 # contract/unified-record-envelope.schema.json (Rust↔contract no-drift proof).
-jsonschema = "0.26"
+jsonschema = "0.49"
 # Mock HTTP server for the CloudClient unit tests (Phase 31d2a).
 wiremock = "0.6"
 # rmcp client feature is dev-only — it's used by the e2e tests to drive
 # the server over a tokio::io::duplex transport (think_and_ship_e2e) and
 # over a real TCP socket via Streamable HTTP (http_transport).
 rmcp = { version = "3.0.0-beta.2", features = ["client", "transport-streamable-http-client-reqwest"] }
+# rmcp 3.1 builds its Streamable HTTP client on reqwest 0.13 with
+# `rustls-no-provider`: the process must install a rustls crypto provider before
+# the first Client is built, or reqwest panics. The tests install `ring` (already
+# in the tree via rustls) once; the library itself still uses reqwest 0.12.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }

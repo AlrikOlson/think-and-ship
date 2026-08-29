@@ -3604,15 +3604,17 @@ mod tests {
     ///
     /// A nested `~/.claude.json` hit is FOUND (so we can tell the human exactly
     /// where to look) but never REWRITTEN. This test also demonstrates why, on a
-    /// document shaped like the real one: a full `Value` round trip sorts keys
-    /// and shifts floats, neither of which is acceptable collateral for setting
-    /// one variable in a file holding every project a user has.
+    /// document shaped like the real one: a full `Value` round trip sorts keys,
+    /// which is not acceptable collateral for setting one variable in a file
+    /// holding every project a user has. (It used to shift floats too — 157 of
+    /// them on the real config — until serde_json 1.0.151 started printing
+    /// `1.6952739999999997` back bit-exactly; the key re-sort alone is reason
+    /// enough, so that is the one still measured here.)
     #[test]
     fn an_external_config_is_found_but_never_rewritten() {
         let tmp = TempDir::new().unwrap();
         let home = tmp.path().join(".claude.json");
-        // Key order chosen so a BTreeMap round trip would visibly re-sort it,
-        // and a float that does not survive parse/serialize bit-exactly.
+        // Key order chosen so a BTreeMap round trip would visibly re-sort it.
         let original = r#"{
   "zzz_last": 1,
   "projects": {
@@ -3660,11 +3662,6 @@ mod tests {
             round_tripped.find("aaa_first") < round_tripped.find("zzz_last"),
             "a Value round trip re-sorts object keys — this is what we refuse to \
              inflict on 151 projects"
-        );
-        assert!(
-            !round_tripped.contains("1.6952739999999997"),
-            "a Value round trip also shifts this float — measured on the real \
-             config as 157 such changes"
         );
     }
 

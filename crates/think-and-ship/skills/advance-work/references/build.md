@@ -5,7 +5,7 @@ project's real gates. Then stop.
 
 ## Select the chunk
 
-Take the focused frontier's `next`. It is the lowest-priority `pending` chunk in
+Take the focused frontier's `next`. It is the most urgent `pending` chunk (smallest `priority` number) in
 this workstream that carries no blocker and whose dependencies are all done.
 
 If `next` is empty, emit a `no-ready-work` receipt. **Do not** take a chunk from

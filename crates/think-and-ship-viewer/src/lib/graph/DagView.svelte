@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import dagre from "@dagrejs/dagre";
+  // dagre 3 exports `Graph` by name and no longer publishes a `dagre` type
+  // namespace; the default export is still the runtime object (`layout`).
+  import dagre, { Graph, type GraphLabel } from "@dagrejs/dagre";
   import { traceStore } from "../store/trace.svelte";
   import { ALL_SESSIONS_SUFFIX, purposeColor, type DepEdge } from "../types";
 
-  let g: dagre.graphlib.Graph<{}>;
+  let g: Graph<GraphLabel>;
 
   interface NodeBox {
     n: number;
@@ -67,7 +69,7 @@
       viewBox = "0 0 600 400";
       return;
     }
-    g = new dagre.graphlib.Graph<{}>();
+    g = new Graph<GraphLabel>();
     g.setGraph({ rankdir: "TB", nodesep: 18, ranksep: 30, marginx: 16, marginy: 16 });
     g.setDefaultEdgeLabel(() => ({}));
 

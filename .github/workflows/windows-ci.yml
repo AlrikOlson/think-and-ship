@@ -1,0 +1,40 @@
+name: windows-ci
+
+# Windows clippy + test, ON DEMAND ONLY. ci.yml runs ubuntu + macos on every
+# PR and push; Windows is not in that matrix and is not a required check on
+# main (ruleset "main: CI required (linux + macos; windows never blocks)"),
+# so a slow or wedged Windows runner can neither spend minutes on every PR
+# nor stall a merge. Run it deliberately when platform-gated code
+# (cfg(windows) shell selection, path handling) changes:
+#
+#   gh workflow run windows-ci.yml --ref <branch>
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  clippy:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          toolchain: stable
+          components: clippy
+      - uses: Swatinem/rust-cache@f0d9c3887740aee45f6153b24b3a6b815192ec16 # v2
+      - run: cargo clippy --workspace --all-targets --exclude think-and-ship-viewer -- -D warnings
+
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@f0d9c3887740aee45f6153b24b3a6b815192ec16 # v2
+      - run: cargo test --workspace --all-targets --exclude think-and-ship-viewer

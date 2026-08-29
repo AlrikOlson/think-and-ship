@@ -17,7 +17,7 @@ traces that realized it.
 The loop, one chunk at a time:
 
 ```
-roadmap_next            # the lowest-priority pending chunk whose deps are all done
+roadmap_next            # the most urgent pending chunk (smallest priority number) whose deps are all done
 roadmap_start_chunk     # → mark in_progress, get a chunk:<id> backref
   ship_set_objective    #   wire chunk:<id> into the execution objective
   think_record_step     #   record the reasoning; roadmap_link it back
