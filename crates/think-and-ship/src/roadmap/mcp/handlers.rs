@@ -541,7 +541,7 @@ impl RoadmapService {
 
     #[tool(
         name = "roadmap_next",
-        description = "Return the next ready chunk: the lowest-priority `pending` chunk that carries no `blocked_by` and whose dependencies are all `done`. Returns null when nothing is ready.\n\nInputs: none.\n\nReturns: the chunk, or null.",
+        description = "Return the next ready chunk: the MOST URGENT `pending` chunk — the one with the smallest `priority` number, since lower sorts earlier (critical=100, high=200, medium=300, low=400) — that carries no `blocked_by` and whose dependencies are all `done`. Returns null when nothing is ready.\n\nInputs: none.\n\nReturns: the chunk, or null.",
         annotations(
             title = "Next ready chunk",
             read_only_hint = true,

@@ -119,7 +119,7 @@ where
 }
 
 /// The product's static rule (the core of `RoadmapEngine::next()`): deps-ready
-/// candidates first, then lowest priority. See the module header for why the
+/// candidates first, then most urgent (smallest priority number). See the module header for why the
 /// historical pending filter cannot be replayed.
 pub fn predictor_priority_rule(case: &ReplayCase) -> Vec<String> {
     let by_id: BTreeMap<&str, &ChunkView> =
@@ -142,7 +142,7 @@ fn shared_prefix_tokens(a: &str, b: &str) -> usize {
 
 /// Phase-locality rival: prefer candidates whose id shares the longest
 /// dash-token prefix with the most recently completed chunk (work happens in
-/// phase trains), then lowest priority. With no history it degrades to the
+/// phase trains), then most urgent (smallest priority number). With no history it degrades to the
 /// priority rule's shape.
 pub fn predictor_locality(case: &ReplayCase) -> Vec<String> {
     let last = case.last_completed.clone().unwrap_or_default();

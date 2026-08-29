@@ -1670,7 +1670,7 @@ pub fn export(format: &str) -> Result<()> {
 }
 
 /// `think-and-ship roadmap next` — the chunk the agent should pick up: the
-/// highest-priority pending chunk that carries no blocker and whose
+/// most urgent pending chunk (smallest priority number) that carries no blocker and whose
 /// dependencies are all done. Same selection the `roadmap_next` MCP tool
 /// makes, so the CLI and the agent never disagree about what's next — asserted
 /// by `tests/roadmap_next_command_seam.rs`, which runs this very binary.

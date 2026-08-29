@@ -80,7 +80,7 @@ from different conversations in the same project correlate.
 | `think-and-ship init [--full] [--dry-run] [--force]` | Write the IDE MCP config (+ optional `CLAUDE.md`) |
 | `think-and-ship doctor` | Diagnose setup issues |
 | `think-and-ship status` | Project info + config state |
-| `think-and-ship roadmap next` | The next ready chunk (unblocked, deps done, highest priority) |
+| `think-and-ship roadmap next` | The next ready chunk (unblocked, deps done, most urgent = smallest priority number) |
 | `think-and-ship roadmap export [--format markdown\|json]` | Render the roadmap as a `ROADMAP.md`-shaped view |
 | `think-and-ship roadmap import [--file F] [--merge] [--dry-run]` | Seed roadmap chunks from a markdown/YAML roadmap |
 | `think-and-ship trace promote --session <id> [--step N] [--kind K]` | Promote private git-native trace records to the shared partition |

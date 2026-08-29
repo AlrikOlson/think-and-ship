@@ -117,7 +117,7 @@ fn blind_and_seeing<'a>(table: &'a [(&'a str, u32, bool)]) -> (&'a str, &'a str)
         .expect("a table with somewhere to go");
     assert!(
         blind.2,
-        "the highest-priority chunk in the table must be a blocked one, or \
+        "the most urgent chunk in the table must be a blocked one, or \
          this file cannot tell a seeing CLI from a blind one; got '{}'",
         blind.0
     );

@@ -151,8 +151,8 @@ pub struct ChunkSummary {
 pub struct RoadmapStatusOutput {
     pub project_id: String,
     pub counts: RoadmapCounts,
-    /// Id of the next ready chunk (lowest priority, unblocked, deps
-    /// satisfied), if any.
+    /// Id of the next ready chunk (most urgent — smallest `priority` number —
+    /// unblocked, deps satisfied), if any.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub next: Option<String>,
     /// Total count of active (backlog/pending/in_progress/blocked) chunks.

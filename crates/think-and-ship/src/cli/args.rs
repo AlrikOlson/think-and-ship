@@ -337,7 +337,7 @@ pub enum RoadmapAction {
         #[arg(long)]
         merge: bool,
     },
-    /// Show the next ready chunk: the highest-priority pending chunk that
+    /// Show the next ready chunk: the most urgent pending chunk (smallest priority number) that
     /// carries no blocker and whose dependencies are all done.
     Next,
     /// Show the roadmap at a glance: counts by status and what's next.
