@@ -8,6 +8,15 @@ SemVer.
 
 ## [0.5.1](https://github.com/AlrikOlson/think-and-ship/compare/v0.5.0...v0.5.1) - 2026-08-29
 
+### Fixed
+
+- report the roadmap load and its one-time repairs through `tracing` (info / warn) instead of unconditional `eprintln!`, so an in-process host with its terminal in raw mode no longer gets the banner painted over its screen (#24)
+
+### Changed
+
+- Windows CI runs only on demand (`windows-ci.yml`, `workflow_dispatch`); ubuntu + macos gate every PR
+- dependencies: rmcp 3.1, jsonschema 0.49, base64 0.23, h2 0.4.19 (RUSTSEC-2026-0258), chacha20 0.10.2; viewer on dagre 3
+
 ### Documentation
 
 - say what roadmap_next picks in words a human and a model read the same way — the most urgent chunk (smallest priority number), not "lowest-priority"
