@@ -48,6 +48,12 @@ fn build_unified() -> UnifiedService {
 /// Spawn the unified server in-process on an ephemeral port and return the URL
 /// pointing at `/mcp` plus the cancellation token that shuts it down.
 async fn spawn_http_server() -> (String, CancellationToken) {
+    // rmcp's reqwest 0.13 client is built with `rustls-no-provider`, so the
+    // process must have a crypto provider installed before the first Client;
+    // a second install (another test in this binary) reports AlreadyInstalled,
+    // which is the state we want.
+    let _ = rustls::crypto::ring::default_provider().install_default();
+
     let unified = build_unified();
     let ct = CancellationToken::new();
 

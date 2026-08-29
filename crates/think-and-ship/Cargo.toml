@@ -67,3 +67,8 @@ wiremock = "0.6"
 # the server over a tokio::io::duplex transport (think_and_ship_e2e) and
 # over a real TCP socket via Streamable HTTP (http_transport).
 rmcp = { version = "3.0.0-beta.2", features = ["client", "transport-streamable-http-client-reqwest"] }
+# rmcp 3.1 builds its Streamable HTTP client on reqwest 0.13 with
+# `rustls-no-provider`: the process must install a rustls crypto provider before
+# the first Client is built, or reqwest panics. The tests install `ring` (already
+# in the tree via rustls) once; the library itself still uses reqwest 0.12.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
