@@ -72,7 +72,7 @@ the loop.
 | Tool                     | Purpose                                                          |
 |--------------------------|-----------------------------------------------------------------|
 | `roadmap_status`         | Counts + the next-ready chunk + the priority-sorted chunk list  |
-| `roadmap_next`           | The lowest-priority pending chunk whose deps are all done        |
+| `roadmap_next`           | The most urgent pending chunk (smallest priority number) whose deps are all done        |
 | `roadmap_add_chunk`      | Add a chunk (id, title, status, priority, acceptance, deps)     |
 | `roadmap_update_chunk`   | Patch a chunk's title / description / acceptance / deps / priority |
 | `roadmap_set_status`     | Transition a chunk's status (validated lifecycle)               |

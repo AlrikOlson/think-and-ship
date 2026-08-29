@@ -127,7 +127,7 @@ credential on a machine you believe is disconnected.
 | `think-and-ship skills list [--scope user\|project]` | Bundled skills with their profile, and each agent's tier, destination and install state |
 | `think-and-ship skills package --client claude-code\|codex --out DIR` | Build that agent's own plugin from the canonical source. Builds only; publishes nothing |
 | `think-and-ship skills migrate [--apply] [--force]` | Retire destinations this installer no longer writes. Previews by default; removes only provably unchanged copies |
-| `think-and-ship roadmap next` | The next ready chunk (deps done, highest priority) |
+| `think-and-ship roadmap next` | The next ready chunk (deps done, most urgent = smallest priority number) |
 | `think-and-ship roadmap status` | The plan at a glance: counts by status + what's next |
 | `think-and-ship roadmap export [--format markdown\|json]` | Render the roadmap as a `ROADMAP.md`-shaped view |
 | `think-and-ship roadmap import --file ROADMAP.md [--merge] [--dry-run]` | Seed roadmap chunks from a hand-written roadmap |

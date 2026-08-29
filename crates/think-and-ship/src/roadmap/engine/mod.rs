@@ -4228,8 +4228,8 @@ mod tests {
     /// row, the named chunk stops being the hard case, and the test keeps
     /// passing for a reason that has nothing to do with what it claims. So the
     /// test derives two answers — what a scheduler blind to blockers would say
-    /// (the lowest-priority chunk on the board) and what a seeing one must say
-    /// (the lowest-priority UNBLOCKED chunk) — and asserts the premise that
+    /// (the most urgent chunk on the board — smallest priority number) and what a seeing one must say
+    /// (the most urgent UNBLOCKED chunk) — and asserts the premise that
     /// makes them differ before asserting anything about `next`.
     #[test]
     fn next_skips_the_hardest_case_the_table_can_produce() {
@@ -4251,7 +4251,7 @@ mod tests {
         // answers coincide and the assertion below proves nothing.
         assert!(
             blind.2,
-            "the highest-priority chunk in the table must be a blocked one, \
+            "the most urgent chunk in the table must be a blocked one, \
              or this test cannot tell a seeing scheduler from a blind one; \
              got '{}'",
             blind.0

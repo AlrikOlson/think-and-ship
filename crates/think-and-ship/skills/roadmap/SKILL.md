@@ -108,7 +108,7 @@ shopping list; loading a tool is a separate, deliberate act):
 
 - **`roadmap_*`** (the plan-of-plans — source of truth):
   - `roadmap_status` — counts + the next-ready chunk + the priority-sorted chunk list. Call first to reconstruct the plan.
-  - `roadmap_next` — the lowest-priority `pending` chunk that carries no blocker and whose deps are all `done`. A blocker-carrying chunk is skipped, not hidden: it keeps its priority and its place in `roadmap_status`, with a `blocker_kind` token on its row saying why (and `counts.blocked_by` tallying the board by kind).
+  - `roadmap_next` — the most urgent `pending` chunk (smallest `priority` number — lower sorts earlier) that carries no blocker and whose deps are all `done`. A blocker-carrying chunk is skipped, not hidden: it keeps its priority and its place in `roadmap_status`, with a `blocker_kind` token on its row saying why (and `counts.blocked_by` tallying the board by kind).
   - `roadmap_start_chunk` — mark a chunk `in_progress`; returns the `chunk:<id>` backref to wire into the ship objective + a think step.
   - `roadmap_complete_chunk` — mark `done`, attaching a proof-of-ship cross-ref (e.g. `task:<id>`).
   - `roadmap_add_chunk` — add a chunk (id, title, status, priority, description, acceptance, deps, shared).

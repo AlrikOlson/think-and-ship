@@ -41,8 +41,8 @@ false and creating a destination cannot be undone from here, so only pass true
 when the human has asked for it. A missing destination with create_missing false
 writes nothing at all, which is the safe outcome, not a failure to work around.
 
-roadmap_next returns the lowest-priority `pending` chunk whose deps are all
-`done`. roadmap_reprioritize NEVER reorders — it records a proposal for a human
+roadmap_next returns the most urgent `pending` chunk (smallest `priority`
+number — lower sorts earlier) whose deps are all `done`. roadmap_reprioritize NEVER reorders — it records a proposal for a human
 to accept. Every JSON-returning tool advertises an outputSchema and emits
 structuredContent."#;
 
