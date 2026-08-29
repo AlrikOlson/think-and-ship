@@ -6,6 +6,12 @@ SemVer.
 
 ## [Unreleased]
 
+## [0.5.1](https://github.com/AlrikOlson/think-and-ship/compare/v0.5.0...v0.5.1) - 2026-08-29
+
+### Documentation
+
+- say what roadmap_next picks in words a human and a model read the same way — the most urgent chunk (smallest priority number), not "lowest-priority"
+
 ## [0.5.0](https://github.com/AlrikOlson/think-and-ship/compare/v0.4.0...v0.5.0) - 2026-08-15
 
 ### Added
