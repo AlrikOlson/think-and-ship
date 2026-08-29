@@ -68,14 +68,14 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all --check
 
-  # Clippy on every supported OS so platform-gated code (cfg(unix) broadcast,
-  # cfg(windows) shell selection) is linted on the platform that compiles it.
+  # Clippy on the two OSes that gate a merge. Windows never runs here: it is
+  # dispatch-only (windows-ci.yml), so it cannot spend minutes or stall a PR.
   clippy:
     if: github.actor != 'dependabot[bot]'
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -91,7 +91,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
