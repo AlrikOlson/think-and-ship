@@ -38,13 +38,15 @@ jobs:
 
           repo_v=$(node -p "require('./npm/think-and-ship/package.json').version")
 
-          crates_v=$(curl -sSf \
+          # Fetched to files and parsed from them — nothing downloaded is piped
+          # into an interpreter (OpenSSF Scorecard Pinned-Dependencies).
+          curl -sSf \
             -H 'User-Agent: think-and-ship-parity (https://github.com/AlrikOlson/think-and-ship)' \
-            https://crates.io/api/v1/crates/think-and-ship \
-            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).crate.max_stable_version))')
+            -o "${RUNNER_TEMP}/crate.json" https://crates.io/api/v1/crates/think-and-ship
+          crates_v=$(node -p 'JSON.parse(require("fs").readFileSync(process.env.RUNNER_TEMP + "/crate.json", "utf8")).crate.max_stable_version')
 
-          npm_v=$(curl -sSf https://registry.npmjs.org/think-and-ship \
-            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s)["dist-tags"].latest))')
+          curl -sSf -o "${RUNNER_TEMP}/npm.json" https://registry.npmjs.org/think-and-ship
+          npm_v=$(node -p 'JSON.parse(require("fs").readFileSync(process.env.RUNNER_TEMP + "/npm.json", "utf8"))["dist-tags"].latest')
 
           echo "repo:      $repo_v"
           echo "crates.io: $crates_v"

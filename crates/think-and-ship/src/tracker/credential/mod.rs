@@ -60,6 +60,7 @@ pub mod domain;
 pub mod github_app;
 pub mod oauth;
 pub mod store;
+mod transport;
 
 pub use atlassian::{AccessibleResource, accessible_resources, jira_api_base, select_site};
 pub use authcode::{LoopbackReceiver, Pkce, authorize_url, exchange_code, new_state, verify_state};
