@@ -8,6 +8,10 @@ SemVer.
 
 ## [0.5.2](https://github.com/AlrikOlson/think-and-ship/compare/v0.5.1...v0.5.2) - 2026-08-30
 
+### Fixed
+
+- a push with no release PR is a no-op; ci: non-Rust changes skip the Rust jobs (#29)
+
 ### Security
 
 - no credentials over cleartext, provenance on release assets, pinned images/downloads, viewer advisories cleared ([#30](https://github.com/AlrikOlson/think-and-ship/pull/30))
