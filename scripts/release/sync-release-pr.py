@@ -117,11 +117,21 @@ def entry_key(text: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", text.lower())[:5])
 
 
+SCOPE_MARKER = re.compile(r"^\*\([^)]*\)\*\s*")
+
+
+def bullet_text(line: str) -> str:
+    """A bullet's text without release-plz's optional ``*(scope)*`` marker."""
+    return SCOPE_MARKER.sub("", line[2:])
+
+
 def present(desc: str, section_lines: list[str]) -> bool:
     if any(desc in l for l in section_lines):
         return True
     key = entry_key(desc)
-    return bool(key) and any(entry_key(l[2:]) == key for l in section_lines if l.startswith("- "))
+    return bool(key) and any(
+        entry_key(bullet_text(l)) == key for l in section_lines if l.startswith("- ")
+    )
 
 
 def complete_changelog(version: str, base: str, check: bool) -> bool:
@@ -131,8 +141,15 @@ def complete_changelog(version: str, base: str, check: bool) -> bool:
         print(f"CHANGELOG.md: no section for {version} — nothing to complete")
         return False
     start, end = bounds
-    section_lines = lines[start:end]
-    missing = [(h, d) for h, d in notable_commits(base, previous_tag(base)) if not present(d, section_lines)]
+    # Presence is checked against the section plus what this run has already
+    # accepted, so two unreleased commits saying the same thing land once.
+    section_lines = list(lines[start:end])
+    missing: list[tuple[str, str]] = []
+    for heading, desc in notable_commits(base, previous_tag(base)):
+        if present(desc, section_lines):
+            continue
+        missing.append((heading, desc))
+        section_lines.append(f"- {desc}")
     if not missing:
         return False
     for heading, desc in missing:
@@ -159,17 +176,21 @@ def complete_changelog(version: str, base: str, check: bool) -> bool:
                 insert_at -= 1
             body[insert_at:insert_at] = ["", marker, ""]
             at = insert_at + 1
-        # Append after the heading's last bullet — or, for a heading with no
-        # bullets yet, one blank line under it, the way release-plz renders.
-        j = at + 1
-        while j < len(body) and body[j].strip() == "":
-            j += 1
-        if j < len(body) and body[j].startswith("- "):
-            while j < len(body) and body[j].startswith("- "):
-                j += 1
-            body.insert(j, f"- {desc}")
+        # Append at the end of the heading's block — everything up to the next
+        # heading, so a multi-line bullet (a wrapped sentence on indented
+        # continuation lines) is never split — before the block's trailing
+        # blank lines. A heading with no bullets yet gets one blank line under
+        # it first, the way release-plz renders.
+        block_end = at + 1
+        while block_end < len(body) and not body[block_end].startswith("### "):
+            block_end += 1
+        k = block_end
+        while k > at + 1 and body[k - 1].strip() == "":
+            k -= 1
+        if k == at + 1:
+            body[k:k] = ["", f"- {desc}"]
         else:
-            body[at + 1:at + 1] = ["", f"- {desc}"]
+            body.insert(k, f"- {desc}")
     # Normalise: at most one blank line between blocks, one trailing blank.
     out: list[str] = []
     for l in body:
