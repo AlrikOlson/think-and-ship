@@ -18,6 +18,24 @@ run a publish command by hand — you merge a PR.
    them to the GitHub release, publishes the npm package, and re-publishes the
    frozen crates.io stubs (no-op unless their versions changed).
 
+Two properties keep step 2 honest without a human in the loop:
+
+- **`main` is linear.** Pull requests are squash-merged (the repository allows
+  no other method; the ruleset requires linear history) with the PR title as
+  the commit subject, so every commit on `main` is one Conventional Commit.
+  release-plz finds the previous release by walking history back to where the
+  version last changed — a merge commit whose side branch was cut before that
+  release (a dependabot branch, typically) stops the walk early and drops
+  changelog entries. v0.5.1 lost its `fix(roadmap)` exactly this way.
+- **The release PR is self-consistent.** After release-plz updates it, the same
+  job runs `scripts/release/sync-release-pr.py` on the PR branch: it sets
+  `npm/think-and-ship/package.json` to Cargo.toml's version (release-plz never
+  bumps it, and ci.yml's `versions` check refuses the PR until they agree — the
+  reason v0.5.0 and v0.5.1 needed a hand-made commit) and appends any
+  `feat`/`fix` commit since the last tag that the generated section lacks.
+  The fix-up is pushed with `RELEASE_PLZ_TOKEN`, so the PR's CI re-runs.
+  `scripts/release/sync-release-pr.py --check` is the dry run.
+
 ## Who owns what
 
 | Concern | Owner | Where |

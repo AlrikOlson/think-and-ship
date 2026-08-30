@@ -125,6 +125,7 @@ jobs:
           toolchain: stable
       - uses: Swatinem/rust-cache@f0d9c3887740aee45f6153b24b3a6b815192ec16 # v2
       - name: Run release-plz release-pr
+        id: release-pr
         uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9 # v0.5
         with:
           command: release-pr
@@ -134,3 +135,45 @@ jobs:
           # Demonstrated — this job succeeded with no crates.io token at all
           # while the secret was absent.
           GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+
+      # release-plz bumps Cargo.toml and renders the changelog from a walk back
+      # to the previous release; it does not touch npm/think-and-ship/package.json
+      # (so `versions` refused v0.5.0 and v0.5.1 until a human bumped it), and
+      # that walk can stop early on a non-linear stretch of history (v0.5.1's
+      # changelog lost its `fix`). This step makes the release PR self-consistent
+      # on every push to main: package.json follows Cargo.toml, and every
+      # feat/fix commit since the last tag is present in the new section.
+      # Pushed with RELEASE_PLZ_TOKEN so the PR's CI re-runs on the fix-up.
+      - name: Keep the release PR self-consistent (npm version, changelog)
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
+          RELEASE_PR: ${{ steps.release-pr.outputs.pr }}
+        run: |
+          set -euo pipefail
+          branch=""
+          if [ -n "${RELEASE_PR}" ]; then
+            branch=$(printf '%s' "${RELEASE_PR}" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).head_branch')
+          fi
+          if [ -z "${branch}" ]; then
+            # The action reports the PR it created or updated; when neither
+            # happened this push, the open release PR (if any) still owns the
+            # branch, so find it rather than assume there is none.
+            branch=$(gh pr list --state open --json headRefName --jq '.[] | select(.headRefName | startswith("release-plz-")) | .headRefName' | head -1)
+          fi
+          if [ -z "${branch}" ]; then
+            echo "no open release PR — nothing to sync"
+            exit 0
+          fi
+          git fetch --quiet origin "${branch}"
+          git checkout --quiet -B "${branch}" "origin/${branch}"
+          python3 scripts/release/sync-release-pr.py --base origin/main
+          if git diff --quiet; then
+            echo "release PR ${branch} is already consistent"
+            exit 0
+          fi
+          git config user.name "AlrikOlson"
+          git config user.email "10505065+AlrikOlson@users.noreply.github.com"
+          version=$(sed -n '/^\[package\]/,/^\[/p' crates/think-and-ship/Cargo.toml | sed -n 's/^version = "\(.*\)"/\1/p' | head -1)
+          git commit --quiet -am "chore(release): sync the npm package version and complete the ${version} changelog"
+          git push --quiet origin "${branch}"
+          echo "pushed the sync commit to ${branch}"

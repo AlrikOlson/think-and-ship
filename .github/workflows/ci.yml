@@ -29,9 +29,11 @@ env:
 jobs:
   # The crate and the npm wrapper ship the same binary under the same version,
   # but release-plz only bumps Cargo.toml. Nothing bumped package.json, and the
-  # two silently drifted until npm served 0.1.1 against crates.io 0.3.0. This
-  # is the cheap half of the guard (in-repo); registry-parity.yml watches what
-  # is actually published.
+  # two silently drifted until npm served 0.1.1 against crates.io 0.3.0. Since
+  # 0.5.1 the release-plz job syncs package.json on the release PR itself
+  # (scripts/release/sync-release-pr.py); this is the in-repo guard that stays
+  # red if that ever regresses, and registry-parity.yml watches what is
+  # actually published.
   versions:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
