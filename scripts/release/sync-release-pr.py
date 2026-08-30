@@ -69,7 +69,9 @@ def sync_package_json(version: str, check: bool) -> bool:
     print(f"package.json: {doc.get('version')} -> {version}")
     if not check:
         doc["version"] = version
-        PACKAGE_JSON.write_text(json.dumps(doc, indent=2) + "\n")
+        # ensure_ascii=False: the description carries an em dash, and a version
+        # sync must change the version and nothing else.
+        PACKAGE_JSON.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
     return True
 
 

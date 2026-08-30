@@ -160,7 +160,9 @@ jobs:
             # branch, so find it rather than assume there is none. release-plz
             # keeps exactly one open; two would mean a stale one was left
             # behind, and guessing between them is worse than stopping.
-            candidates=$(gh pr list --state open --json headRefName --jq '.[] | select(.headRefName | startswith("release-plz-")) | .headRefName')
+            # Same-repository PRs against main only: a fork can name a branch
+            # release-plz-* too, and it is neither fetchable from origin nor ours.
+            candidates=$(gh pr list --state open --base main --json headRefName,isCrossRepository --jq '.[] | select(.isCrossRepository | not) | select(.headRefName | startswith("release-plz-")) | .headRefName')
             if [ "$(printf '%s\n' "${candidates}" | grep -c .)" -gt 1 ]; then
               echo "::error::more than one open release-plz-* PR; close the stale one:"
               printf '%s\n' "${candidates}"
