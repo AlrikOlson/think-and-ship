@@ -157,8 +157,16 @@ jobs:
           if [ -z "${branch}" ]; then
             # The action reports the PR it created or updated; when neither
             # happened this push, the open release PR (if any) still owns the
-            # branch, so find it rather than assume there is none.
-            branch=$(gh pr list --state open --json headRefName --jq '.[] | select(.headRefName | startswith("release-plz-")) | .headRefName' | head -1)
+            # branch, so find it rather than assume there is none. release-plz
+            # keeps exactly one open; two would mean a stale one was left
+            # behind, and guessing between them is worse than stopping.
+            candidates=$(gh pr list --state open --json headRefName --jq '.[] | select(.headRefName | startswith("release-plz-")) | .headRefName')
+            if [ "$(printf '%s\n' "${candidates}" | grep -c .)" -gt 1 ]; then
+              echo "::error::more than one open release-plz-* PR; close the stale one:"
+              printf '%s\n' "${candidates}"
+              exit 1
+            fi
+            branch="${candidates}"
           fi
           if [ -z "${branch}" ]; then
             echo "no open release PR — nothing to sync"

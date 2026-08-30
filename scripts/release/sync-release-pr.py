@@ -138,8 +138,13 @@ def complete_changelog(version: str, base: str, check: bool) -> bool:
     lines = CHANGELOG.read_text().splitlines()
     bounds = section_bounds(lines, version)
     if bounds is None:
-        print(f"CHANGELOG.md: no section for {version} — nothing to complete")
-        return False
+        # Not a no-op: without its section the release has no changelog and
+        # nothing here can be completed. Fail so the job — and `--check` —
+        # is red rather than reporting a consistent release PR.
+        sys.exit(
+            f"CHANGELOG.md: no `## [{version}]` section — release-plz did not render one "
+            "or it was edited away; the release cannot proceed without it"
+        )
     start, end = bounds
     # Presence is checked against the section plus what this run has already
     # accepted, so two unreleased commits saying the same thing land once.

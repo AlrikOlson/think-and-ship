@@ -13,10 +13,13 @@ name: CodeQL
 # advanced configurations cannot be processed when the default setup is
 # enabled"), so turning default setup back on silently breaks every job here.
 
+# Runs on main and on the weekly schedule, not on pull requests: the rust
+# analysis takes ~9 minutes, none of its checks gate a merge (the main ruleset
+# requires fmt, versions, and the ubuntu + macos test/clippy legs), and a
+# finding on main is a finding on the PR that just merged. Keeping it off the
+# PR path means a PR's CI is the five-minute set and nothing else.
 on:
   push:
-    branches: [main]
-  pull_request:
     branches: [main]
   schedule:
     - cron: "17 5 * * 2"
