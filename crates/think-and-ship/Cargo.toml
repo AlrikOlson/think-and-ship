@@ -1,6 +1,6 @@
 [package]
 name = "think-and-ship"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2024"
 # 1.89 for std::fs::File advisory locking (lock/unlock) — the dependency-free
 # cross-process guard in think/persistence.rs (think-trace-durability).
