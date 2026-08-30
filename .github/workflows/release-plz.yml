@@ -164,9 +164,15 @@ jobs:
             echo "no open release PR — nothing to sync"
             exit 0
           fi
+          # The release branch is DATA here, never code: it is writable
+          # outside the main ruleset, and this step holds a repository-write
+          # token. The script that runs is the reviewed copy on origin/main,
+          # materialised before the branch is checked out; the branch only
+          # supplies the files it edits.
+          git show origin/main:scripts/release/sync-release-pr.py > "${RUNNER_TEMP}/sync-release-pr.py"
           git fetch --quiet origin "${branch}"
           git checkout --quiet -B "${branch}" "origin/${branch}"
-          python3 scripts/release/sync-release-pr.py --base origin/main
+          python3 "${RUNNER_TEMP}/sync-release-pr.py" --base origin/main
           if git diff --quiet; then
             echo "release PR ${branch} is already consistent"
             exit 0
