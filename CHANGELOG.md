@@ -6,6 +6,12 @@ SemVer.
 
 ## [Unreleased]
 
+## [0.5.2](https://github.com/AlrikOlson/think-and-ship/compare/v0.5.1...v0.5.2) - 2026-08-30
+
+### Security
+
+- no credentials over cleartext, provenance on release assets, pinned images/downloads, viewer advisories cleared ([#30](https://github.com/AlrikOlson/think-and-ship/pull/30))
+
 ## [0.5.1](https://github.com/AlrikOlson/think-and-ship/compare/v0.5.0...v0.5.1) - 2026-08-29
 
 ### Fixed
