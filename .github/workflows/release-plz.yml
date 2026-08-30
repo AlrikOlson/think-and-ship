@@ -150,10 +150,10 @@ jobs:
           RELEASE_PR: ${{ steps.release-pr.outputs.pr }}
         run: |
           set -euo pipefail
-          branch=""
-          if [ -n "${RELEASE_PR}" ]; then
-            branch=$(printf '%s' "${RELEASE_PR}" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).head_branch')
-          fi
+          # The action's `pr` output is `{}` — not empty — on a push that opened
+          # or updated no release PR, which is most pushes; a missing
+          # head_branch must read as "none", not as the string "undefined".
+          branch=$(printf '%s' "${RELEASE_PR:-{\}}" | node -p 'JSON.parse(require("fs").readFileSync(0,"utf8")).head_branch || ""')
           if [ -z "${branch}" ]; then
             # The action reports the PR it created or updated; when neither
             # happened this push, the open release PR (if any) still owns the
