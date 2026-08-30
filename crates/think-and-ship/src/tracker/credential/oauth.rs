@@ -102,6 +102,9 @@ impl OAuthClient {
             ))
         })?;
 
+        // The form carries the refresh token and the client secret: never
+        // onto a cleartext transport.
+        super::transport::require_tls(&config.token_url)?;
         let resp = self
             .http
             .post(&config.token_url)

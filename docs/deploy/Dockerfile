@@ -21,7 +21,11 @@ ARG RUST_VERSION=1.88
 ARG DEBIAN_VERSION=bookworm
 
 # ─── Stage 1: build ──────────────────────────────────────────────
-FROM rust:${RUST_VERSION}-slim-${DEBIAN_VERSION} AS builder
+# Digest-pinned (OpenSSF Scorecard Pinned-Dependencies). The digest is the
+# multi-arch manifest list for rust:1.88-slim-bookworm; bumping RUST_VERSION or
+# DEBIAN_VERSION means updating it too, and a mismatch fails the build loudly
+# rather than silently pulling a different image.
+FROM rust:${RUST_VERSION}-slim-${DEBIAN_VERSION}@sha256:38bc5a86d998772d4aec2348656ed21438d20fcdce2795b56ca434cf21430d89 AS builder
 
 WORKDIR /src
 RUN apt-get update \
@@ -35,7 +39,8 @@ COPY . .
 RUN cargo build --release -p think-and-ship --locked
 
 # ─── Stage 2: runtime ────────────────────────────────────────────
-FROM debian:${DEBIAN_VERSION}-slim AS runtime
+# Digest-pinned: debian:bookworm-slim's manifest list; see the note above.
+FROM debian:${DEBIAN_VERSION}-slim@sha256:88200866dfff7ea7f5cbcb6ec7c8a701889efe6fe859fe64d6990e4b07ea4171 AS runtime
 
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates \

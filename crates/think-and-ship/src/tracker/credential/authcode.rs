@@ -399,6 +399,9 @@ pub async fn exchange_code(
         form.push(("client_secret", config.client_secret.expose().to_string()));
     }
 
+    // The form carries the code and, for a confidential client, the secret:
+    // never onto a cleartext transport.
+    super::transport::require_tls(&config.token_url)?;
     let resp = http
         .post(&config.token_url)
         .form(&form)
