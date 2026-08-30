@@ -27,14 +27,15 @@ Two properties keep step 2 honest without a human in the loop:
   version last changed — a merge commit whose side branch was cut before that
   release (a dependabot branch, typically) stops the walk early and drops
   changelog entries. v0.5.1 lost its `fix(roadmap)` exactly this way.
-- **The release PR is self-consistent.** After release-plz updates it, the same
-  job runs `scripts/release/sync-release-pr.py` on the PR branch: it sets
-  `npm/think-and-ship/package.json` to Cargo.toml's version (release-plz never
-  bumps it, and ci.yml's `versions` check refuses the PR until they agree — the
-  reason v0.5.0 and v0.5.1 needed a hand-made commit) and appends any
-  `feat`/`fix` commit since the last tag that the generated section lacks.
-  The fix-up is pushed with `RELEASE_PLZ_TOKEN`, so the PR's CI re-runs.
-  `scripts/release/sync-release-pr.py --check` is the dry run.
+- **The npm version is the tag.** `npm/think-and-ship/package.json` carries the
+  placeholder `0.0.0-development`; `release.yml` stamps the published package
+  from the `v*` tag. There is no committed npm version to bump, sync or drift
+  (v0.5.0 and v0.5.1 each needed a hand-made bump when there was one).
+- **The release PR's changelog is complete.** After release-plz updates it, the
+  same job runs `scripts/release/sync-release-pr.py` on the PR branch and
+  appends any `feat`/`fix` commit since the last tag that the generated
+  section lacks. The fix-up is pushed with `RELEASE_PLZ_TOKEN`, so the PR's CI
+  re-runs. `scripts/release/sync-release-pr.py --check` is the dry run.
 
 ## Who owns what
 
@@ -131,7 +132,7 @@ Two gates, because the failure was silent in two different places:
 
 | Gate | Where | Catches |
 |---|---|---|
-| `versions` | `ci.yml`, every PR | `Cargo.toml` and `npm/think-and-ship/package.json` disagreeing in the repo |
+| tag-stamped npm version | `release.yml` `publish-npm` | a committed npm version drifting from Cargo.toml — there is none to drift; the published version is the tag |
 | `Registry parity` | `registry-parity.yml`, daily + on version-file changes | crates.io and npm serving different versions |
 
 Plus two things that can no longer silently degrade: release-plz **fails** when

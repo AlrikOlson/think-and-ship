@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """Make the release-plz PR self-consistent — run on its branch, after release-plz.
 
-Two things release-plz does not do for this repository, applied idempotently:
+One thing release-plz does not do for this repository, applied idempotently
+(the npm package version needs no sync: the committed package.json carries a
+placeholder and release.yml stamps the published version from the tag):
 
-1. ``npm/think-and-ship/package.json`` follows ``crates/think-and-ship/Cargo.toml``.
-   release-plz bumps Cargo.toml only; the npm wrapper ships the same binary under
-   the same version, and ci.yml's ``versions`` check refuses the PR until they agree.
-   (v0.5.0 and v0.5.1 both needed this by hand.)
-
-2. The new ``CHANGELOG.md`` section carries every ``feat``/``fix`` commit on the
+1. The new ``CHANGELOG.md`` section carries every ``feat``/``fix`` commit on the
    base branch since the last ``v*`` tag. release-plz derives the section from a
    walk back through history to the previous release; a non-linear stretch can
    stop that walk early and drop entries (v0.5.1 lost its ``fix(roadmap)`` this
@@ -26,14 +23,12 @@ Exit 0 whether or not anything changed; the caller decides whether to commit.
 from __future__ import annotations
 
 import argparse
-import json
 import re
 import subprocess
 import sys
 from pathlib import Path
 
 CARGO_TOML = Path("crates/think-and-ship/Cargo.toml")
-PACKAGE_JSON = Path("npm/think-and-ship/package.json")
 CHANGELOG = Path("CHANGELOG.md")
 
 # Conventional-Commit type -> Keep-a-Changelog heading, mirroring
@@ -60,19 +55,6 @@ def cargo_version() -> str:
             if m:
                 return m.group(1)
     sys.exit(f"{CARGO_TOML}: no [package] version")
-
-
-def sync_package_json(version: str, check: bool) -> bool:
-    doc = json.loads(PACKAGE_JSON.read_text())
-    if doc.get("version") == version:
-        return False
-    print(f"package.json: {doc.get('version')} -> {version}")
-    if not check:
-        doc["version"] = version
-        # ensure_ascii=False: the description carries an em dash, and a version
-        # sync must change the version and nothing else.
-        PACKAGE_JSON.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n")
-    return True
 
 
 def previous_tag(base: str) -> str | None:
@@ -218,8 +200,7 @@ def main() -> int:
     args = ap.parse_args()
 
     version = cargo_version()
-    changed = sync_package_json(version, args.check)
-    changed = complete_changelog(version, args.base, args.check) or changed
+    changed = complete_changelog(version, args.base, args.check)
     if not changed:
         print(f"release PR is consistent for {version}")
         return 0

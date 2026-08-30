@@ -27,14 +27,6 @@ env:
   CARGO_PROFILE_DEV_DEBUG: "line-tables-only"
 
 jobs:
-  # The crate and the npm wrapper ship the same binary under the same version,
-  # but release-plz only bumps Cargo.toml. Nothing bumped package.json, and the
-  # two silently drifted until npm served 0.1.1 against crates.io 0.3.0, and
-  # v0.5.0 and v0.5.1 each needed a hand-made bump. For releases after 0.5.1
-  # the release-plz job syncs package.json on the release PR itself
-  # (scripts/release/sync-release-pr.py); this is the in-repo guard that stays
-  # red if that ever regresses, and registry-parity.yml watches what is
-  # actually published.
   # Classifies the diff so a change that does not touch Rust does not build
   # Rust. The Rust jobs below are job-level conditionals on this output — a
   # required check that is SKIPPED counts as passing, whereas a workflow-level
@@ -78,29 +70,6 @@ jobs:
             echo "changed files:"; printf '  %s\n' ${files}
           fi
           echo "rust=${rust}" | tee -a "$GITHUB_OUTPUT"
-
-  versions:
-    if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Cargo.toml and package.json agree
-        run: |
-          set -euo pipefail
-          cargo_v=$(sed -n '/^\[package\]/,/^\[/p' crates/think-and-ship/Cargo.toml \
-            | sed -n 's/^version = "\(.*\)"/\1/p' | head -1)
-          npm_v=$(node -p "require('./npm/think-and-ship/package.json').version")
-          echo "Cargo.toml:   $cargo_v"
-          echo "package.json: $npm_v"
-          if [ -z "$cargo_v" ]; then
-            echo "::error::could not read the version from crates/think-and-ship/Cargo.toml"
-            exit 1
-          fi
-          if [ "$cargo_v" != "$npm_v" ]; then
-            echo "::error::version drift — Cargo.toml is $cargo_v but npm/think-and-ship/package.json is $npm_v."
-            echo "They ship the same binary and must release together. Update package.json."
-            exit 1
-          fi
 
   fmt:
     needs: changes
