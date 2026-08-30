@@ -35,6 +35,50 @@ jobs:
   # (scripts/release/sync-release-pr.py); this is the in-repo guard that stays
   # red if that ever regresses, and registry-parity.yml watches what is
   # actually published.
+  # Classifies the diff so a change that does not touch Rust does not build
+  # Rust. The Rust jobs below are job-level conditionals on this output — a
+  # required check that is SKIPPED counts as passing, whereas a workflow-level
+  # `paths:` filter would leave it "expected" forever and block the merge.
+  # Anything not in the allowlist of Rust-free paths counts as Rust, so a new
+  # kind of file errs on the side of running the gate.
+  changes:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    outputs:
+      rust: ${{ steps.classify.outputs.rust }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          HEAD: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT}" = "pull_request" ]; then base="${PR_BASE}"; else base="${PUSH_BEFORE}"; fi
+          rust=false
+          if [ -z "${base}" ] || [ "${base}" = "0000000000000000000000000000000000000000" ] \
+             || ! files=$(git diff --name-only "${base}" "${HEAD}" 2>/dev/null); then
+            echo "no usable base to diff against — treating the change as Rust"
+            rust=true
+          else
+            while IFS= read -r f; do
+              [ -z "${f}" ] && continue
+              case "${f}" in
+                .github/workflows/ci.yml) rust=true ;;   # this file's own changes get the full gate
+                crates/think-and-ship-viewer/src-tauri/*) rust=true ;;
+                *.md|docs/*|scripts/*|npm/*|site/*|frontend/*|backend/*|infra/*|windsurf/*|shared/*|\
+                .github/*|crates/think-and-ship-viewer/*|*.png|LICENSE|.gitignore|.gitattributes) ;;
+                *) rust=true ;;
+              esac
+            done <<< "${files}"
+            echo "changed files:"; printf '  %s\n' ${files}
+          fi
+          echo "rust=${rust}" | tee -a "$GITHUB_OUTPUT"
+
   versions:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
@@ -59,7 +103,8 @@ jobs:
           fi
 
   fmt:
-    if: github.actor != 'dependabot[bot]'
+    needs: changes
+    if: github.actor != 'dependabot[bot]' && needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -74,7 +119,8 @@ jobs:
   # Clippy on the two OSes that gate a merge. Windows never runs here: it is
   # dispatch-only (windows-ci.yml), so it cannot spend minutes or stall a PR.
   clippy:
-    if: github.actor != 'dependabot[bot]'
+    needs: changes
+    if: github.actor != 'dependabot[bot]' && needs.changes.outputs.rust == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -90,7 +136,8 @@ jobs:
       - run: cargo clippy --workspace --all-targets --exclude think-and-ship-viewer -- -D warnings
 
   test:
-    if: github.actor != 'dependabot[bot]'
+    needs: changes
+    if: github.actor != 'dependabot[bot]' && needs.changes.outputs.rust == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -107,7 +154,8 @@ jobs:
   # Everything here ships to docs.rs — a broken intra-doc link or a public
   # doc linking a private item is a rendered defect, not a style nit.
   docs:
-    if: github.actor != 'dependabot[bot]'
+    needs: changes
+    if: github.actor != 'dependabot[bot]' && needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     env:
       RUSTDOCFLAGS: "-D warnings"
@@ -124,7 +172,8 @@ jobs:
   # RUSTFLAGS is cleared — an older compiler may warn where stable does not,
   # and a warning is not an MSRV violation.
   msrv:
-    if: github.actor != 'dependabot[bot]'
+    needs: changes
+    if: github.actor != 'dependabot[bot]' && needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     env:
       RUSTFLAGS: ""
