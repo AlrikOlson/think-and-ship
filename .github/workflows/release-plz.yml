@@ -136,15 +136,14 @@ jobs:
           # while the secret was absent.
           GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
 
-      # release-plz bumps Cargo.toml and renders the changelog from a walk back
-      # to the previous release; it does not touch npm/think-and-ship/package.json
-      # (so `versions` refused v0.5.0 and v0.5.1 until a human bumped it), and
-      # that walk can stop early on a non-linear stretch of history (v0.5.1's
-      # changelog lost its `fix`). This step makes the release PR self-consistent
-      # on every push to main: package.json follows Cargo.toml, and every
-      # feat/fix commit since the last tag is present in the new section.
-      # Pushed with RELEASE_PLZ_TOKEN so the PR's CI re-runs on the fix-up.
-      - name: Keep the release PR self-consistent (npm version, changelog)
+      # release-plz renders the changelog from a walk back to the previous
+      # release, and that walk can stop early on a non-linear stretch of
+      # history (v0.5.1's changelog lost its `fix`). This step completes the
+      # release PR's changelog on every push to main: every feat/fix commit
+      # since the last tag is present in the new section. (The npm package
+      # version needs no sync — package.json is a placeholder stamped from the
+      # tag at publish.) Pushed with RELEASE_PLZ_TOKEN so the PR's CI re-runs.
+      - name: Keep the release PR's changelog complete
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PLZ_TOKEN }}
           RELEASE_PR: ${{ steps.release-pr.outputs.pr }}
@@ -190,6 +189,6 @@ jobs:
           git config user.name "AlrikOlson"
           git config user.email "10505065+AlrikOlson@users.noreply.github.com"
           version=$(sed -n '/^\[package\]/,/^\[/p' crates/think-and-ship/Cargo.toml | sed -n 's/^version = "\(.*\)"/\1/p' | head -1)
-          git commit --quiet -am "chore(release): sync the npm package version and complete the ${version} changelog"
+          git commit --quiet -am "chore(release): complete the ${version} changelog"
           git push --quiet origin "${branch}"
           echo "pushed the sync commit to ${branch}"
