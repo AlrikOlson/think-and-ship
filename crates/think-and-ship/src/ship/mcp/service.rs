@@ -56,6 +56,16 @@ impl ShipService {
         }
     }
 
+    /// Hand out a clone of the shared engine handle, as `RoadmapService::engine`
+    /// does, so a host that mounts this family beside its own tools can record
+    /// on the same trace the wire writes to — a quality gate the host ran
+    /// itself (on its own pty, streamed live) recorded through
+    /// `ShipEngine::record_check_full` with its real exit code, rather than a
+    /// second engine over the same store that the guards here cannot see.
+    pub fn engine(&self) -> Arc<Mutex<ShipEngine>> {
+        Arc::clone(&self.engine)
+    }
+
     pub fn list_tools_view(&self) -> Vec<rmcp::model::Tool> {
         let mut tools = self.tool_router.list_all();
         for tool in tools.iter_mut() {
