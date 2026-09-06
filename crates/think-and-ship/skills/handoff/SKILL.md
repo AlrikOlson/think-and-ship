@@ -52,7 +52,8 @@ Then, and only as each turns out to be relevant:
 | The roadmap has a ready next chunk worth naming | `select:…roadmap_next` |
 | Recalling reasoning behind the in-flight chunk | `select:…think_engine_status,…think_search_trace,…think_get_step` |
 | The project actually uses signals | `select:…signal_status,…signal_pending` |
-| A full plan projection is genuinely needed | `select:…roadmap_export` |
+| Selected records are needed | `select:…roadmap_get` |
+| A full plan projection is genuinely needed | `select:…roadmap_export` with `output: "inline"` (default export writes a file) |
 
 Then load the project's code-exploration tools if present (ministr `ministr_survey`/`ministr_symbols`/`ministr_definition`; else fall back to Grep/Read) — again, at the point you explore, not before. If think-and-ship isn't wired in this project, degrade gracefully: build the handoff from git log + the code + any ROADMAP/TODO docs, and say so.
 

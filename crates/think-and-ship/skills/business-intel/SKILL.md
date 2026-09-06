@@ -118,7 +118,7 @@ This is the cheap, high-signal layer — do it before any research.
 - `roadmap_status` — counts by status, the priority-ordered chunk list, the next-ready chunk, recently-done. This is your **delivery ledger**.
 - `signal_status` / `signal_pending` — open stakeholder signals = your **demand signal** (what the market is asking for that isn't built).
 - `ship_status` — the current/last execution objective + its checks = **delivery health** (are gates green, is anything blocked).
-- Optionally `roadmap_export` for the full descriptive text when you need acceptance criteria / notes.
+- Use `roadmap_get` for the full descriptive text of selected chunks. Only request `roadmap_export {output: "inline"}` when the entire document is necessary; default export writes a file.
 
 Derive the **scorecard** (§3) from this. Note open strategic decisions encoded in the roadmap (e.g. a chunk gated on a "SaaS vs not — D4" decision is an unmade CEO call — surface it).
 
@@ -184,7 +184,7 @@ This is the integration with `/roadmap`. Translate findings into reversible, pro
 - **Provenance** → `roadmap_record_refresh(summary, think_steps: [..])` recording that a business-intel briefing ran, its headline, and the think steps behind it. This is how `/roadmap-refresh` and the next briefing see what was already judged.
 
 Then regenerate the roadmap view if the project keeps one:
-`THINK_AND_SHIP_PERSIST=true think-and-ship roadmap export --format markdown > ROADMAP.md` (only if `ROADMAP.md` is tracked/expected; it's a build output).
+`roadmap_export {}`. The server writes the file; verify `written: true` in its receipt. Run this only if `ROADMAP.md` is tracked/expected; it is a build output.
 
 ### 8. Close with a `think` step
 

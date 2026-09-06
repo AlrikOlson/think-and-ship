@@ -332,7 +332,7 @@ Discoveries go to `backlog`, never straight to `pending`. Re-prioritization is a
 human disposes.
 
 Then regenerate the view if the project keeps one:
-`THINK_AND_SHIP_PERSIST=true think-and-ship roadmap export --format markdown > ROADMAP.md`
+`roadmap_export {}` (the server writes the file; verify `written: true` in its receipt)
 
 ## Step 12 — Report, then hand off
 

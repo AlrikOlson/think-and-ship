@@ -230,7 +230,7 @@ Call the `roadmap_*` tools from step 7. Discipline:
 - Do not delete history — `roadmap_obsolete_chunk` keeps obsoleted chunks; let the user decide on removal.
 - **Record the refresh itself**: `roadmap_record_refresh(summary: "<scope>: <what changed>", think_steps: [<the think step numbers>])`. This makes the refresh first-class provenance.
 - `roadmap_link` any chunk you mutated to the `think:<N>` step that justified it.
-- Regenerate the view if the project keeps a `ROADMAP.md`: `THINK_AND_SHIP_PERSIST=true think-and-ship roadmap export --format markdown > ROADMAP.md` (or write `roadmap_export`'s output).
+- Regenerate the view if the project keeps a `ROADMAP.md`: `roadmap_export {}`. Confirm `written: true` in the receipt; the server writes the complete view without copying it through the conversation.
 
 ### 9. Close with a `think` step
 

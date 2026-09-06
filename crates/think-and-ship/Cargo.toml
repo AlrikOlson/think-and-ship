@@ -55,8 +55,9 @@ chacha20poly1305 = "0.10"
 base64 = "0.23"
 quick-xml = "0.41"
 
-[dev-dependencies]
 tempfile = "3"
+
+[dev-dependencies]
 pretty_assertions = "1"
 # Validates Rust-built cloud envelopes against the canonical
 # contract/unified-record-envelope.schema.json (Rust↔contract no-drift proof).

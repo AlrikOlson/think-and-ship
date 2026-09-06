@@ -160,7 +160,14 @@ async fn roadmap_family_round_trips_over_the_wire() {
     // roadmap_export markdown projection should contain the chunk title.
     let export = client_service
         .peer()
-        .call_tool(CallToolRequestParams::new("roadmap_export"))
+        .call_tool(
+            CallToolRequestParams::new("roadmap_export").with_arguments(
+                serde_json::json!({"output": "inline"})
+                    .as_object()
+                    .unwrap()
+                    .clone(),
+            ),
+        )
         .await
         .unwrap();
     let ec = export

@@ -129,7 +129,7 @@ credential on a machine you believe is disconnected.
 | `think-and-ship skills migrate [--apply] [--force]` | Retire destinations this installer no longer writes. Previews by default; removes only provably unchanged copies |
 | `think-and-ship roadmap next` | The next ready chunk (deps done, most urgent = smallest priority number) |
 | `think-and-ship roadmap status` | The plan at a glance: counts by status + what's next |
-| `think-and-ship roadmap export [--format markdown\|json]` | Render the roadmap as a `ROADMAP.md`-shaped view |
+| `think-and-ship roadmap export [--format markdown\|json]` | Print the roadmap to stdout for shell redirection |
 | `think-and-ship roadmap import --file ROADMAP.md [--merge] [--dry-run]` | Seed roadmap chunks from a hand-written roadmap |
 | `think-and-ship roadmap hygiene [--dry-run]` | Flag stalled / ready-but-idle chunks as signals |
 | `think-and-ship roadmap regions [--file MAP] [--apply]` | Audit the region map — the places the plan is navigated by — or re-author it from a JSON map of region name to chunk ids |

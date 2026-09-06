@@ -202,9 +202,27 @@ pub struct ReprioritizeArgs {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[schemars(deny_unknown_fields)]
 pub struct ExportArgs {
-    #[serde(default = "default_format")]
+    #[serde(default = "default_format", deserialize_with = "export_string")]
     pub format: String,
+    #[serde(default = "default_output", deserialize_with = "export_string")]
+    pub output: String,
+    #[serde(flatten)]
+    pub extra: serde_json::Map<String, serde_json::Value>,
+}
+
+// Missing keys receive defaults; explicit null/wrong types reach the handler's
+// structured invalid_args envelope instead of cancelling sibling tool calls.
+fn export_string<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+    Ok(serde_json::Value::deserialize(deserializer)?
+        .as_str()
+        .unwrap_or_default()
+        .to_string())
+}
+
+fn default_output() -> String {
+    "file".to_string()
 }
 
 fn default_format() -> String {
@@ -600,11 +618,11 @@ impl RoadmapService {
 
     #[tool(
         name = "roadmap_export",
-        description = "Export the roadmap as a human-readable markdown projection or json.\n\nInputs: format ('markdown'|'json', default 'markdown').\n\nReturns: { format, roadmap }. The markdown view reproduces a ROADMAP.md-shaped document.",
+        description = "Atomically write ROADMAP.md (or ROADMAP.json) in the configured workspace; no manual copying.\n\nInputs: format ('markdown'|'json', default 'markdown'); output ('file'|'inline', default 'file').\n\nReturns: {format, path, bytes, written:true}. output:'inline' returns {format,roadmap} without writing. Use roadmap_get for selected records. Refuses symlink/non-file targets and unknown inputs.",
         annotations(
             title = "Export roadmap",
-            read_only_hint = true,
-            destructive_hint = false,
+            read_only_hint = false,
+            destructive_hint = true,
             idempotent_hint = true,
             open_world_hint = false,
         )
@@ -613,16 +631,54 @@ impl RoadmapService {
         &self,
         Parameters(args): Parameters<ExportArgs>,
     ) -> Result<CallToolResult, ErrorData> {
+        if !args.extra.is_empty() {
+            return Ok(Self::err_structured(
+                "invalid_args",
+                "only format and output are supported",
+            ));
+        }
+        if !matches!(args.format.as_str(), "markdown" | "json") {
+            return Ok(Self::err_structured(
+                "invalid_args",
+                "format must be markdown or json",
+            ));
+        }
+        if !matches!(args.output.as_str(), "file" | "inline") {
+            return Ok(Self::err_structured(
+                "invalid_args",
+                "output must be file or inline",
+            ));
+        }
+        if args.output == "file" && self.workspace_root.is_none() {
+            return Ok(Self::err_structured(
+                "workspace_unavailable",
+                "file export requires a configured workspace; use output: inline to read without writing",
+            ));
+        }
+        // Keep the lock through replacement so a later export from this service
+        // cannot be overwritten by an older snapshot that finished writing late.
         let engine = self.engine.lock().map_err(|_| Self::poisoned())?;
         let output = engine.export(&args.format);
-        Ok(Self::ok_structured(
-            serde_json::json!({ "format": args.format, "roadmap": output }),
-        ))
+        if args.output == "inline" {
+            return Ok(Self::ok_structured(
+                serde_json::json!({ "format": args.format, "roadmap": output }),
+            ));
+        }
+        let root = self
+            .workspace_root
+            .as_ref()
+            .expect("workspace checked above");
+        match super::export::write_projection(root, &args.format, &output) {
+            Ok(path) => Ok(Self::ok_structured(serde_json::json!({
+                "format": args.format, "path": path, "bytes": output.len(), "written": true,
+            }))),
+            Err(error) => Ok(Self::err_structured("export_failed", error.to_string())),
+        }
     }
 
     #[tool(
         name = "roadmap_get",
-        description = "Read the FULL stored records — description, content, acceptance, deps, cross_refs — for a named handful of chunks. The verb between roadmap_status (every chunk, one truncated line each, no body) and roadmap_export (the whole database, ~1.5 MB on a mature roadmap and too large to return).\n\nInputs: ids (string[], required, a SET of at most 20 distinct ids — the largest set whose worst case still fits a tool result; a repeated id is answered once); fields (string[], optional) projects each record, JSON:API sparse-fieldset style, e.g. ['content'] or ['acceptance','deps'].\n\nReturns: { records, returned, unknown, fields }. Records come back in the order you named them.\n\nPitfalls: nothing here fails quietly. Over the cap is an ERROR, not a short answer; an id matching no chunk is listed in `unknown` rather than omitted, so you can tell 'no such chunk' from 'that chunk has no summary'; and an unrecognised field name is refused with the full vocabulary rather than ignored. `id` is returned whatever you project.",
+        description = "Read full stored records — description, content, acceptance, deps, cross_refs — for selected chunks. roadmap_status omits these bodies; roadmap_export writes the whole database.\n\nInputs: ids (string[], required, at most 20 DISTINCT ids; repeats are answered once); fields (string[], optional) projects each record, e.g. ['content'] or ['acceptance','deps'].\n\nReturns: { records, returned, unknown, fields }. Records come back in the order you named them.\n\nPitfalls: nothing here fails quietly. Over the cap is an ERROR, not a short answer; an id matching no chunk is listed in `unknown` rather than omitted, so you can tell 'no such chunk' from 'that chunk has no summary'; and an unrecognised field name is refused with the full vocabulary rather than ignored. `id` is returned whatever you project.",
         annotations(
             title = "Get chunks by id",
             read_only_hint = true,

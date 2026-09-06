@@ -475,7 +475,11 @@ fn build_unified() -> Result<(UnifiedService, String)> {
     if let Some(cloud) = &cloud_client {
         roadmap_engine = roadmap_engine.with_cloud(cloud.clone());
     }
-    let roadmap_service = crate::roadmap::RoadmapService::new(roadmap_engine);
+    let workspace_root = crate::roadmap::mcp::service::resolve_workspace_root(
+        &std::env::current_dir().context("resolving roadmap export workspace")?,
+    )?;
+    let roadmap_service =
+        crate::roadmap::RoadmapService::new(roadmap_engine).with_workspace_root(workspace_root);
 
     // Signal family: native, persisted local signal cache under the
     // Domain::Signal partition. When SyncTarget::Cloud is selected,
