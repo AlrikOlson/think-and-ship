@@ -51,7 +51,9 @@ fn seeded_service(root: &std::path::Path) -> RoadmapService {
             false,
         )
         .unwrap();
-    RoadmapService::new(engine).with_workspace_root(root)
+    RoadmapService::new(engine)
+        .with_workspace_root(root)
+        .unwrap()
 }
 
 fn assert_schema(service: &RoadmapService, receipt: &Value) {
@@ -129,7 +131,8 @@ async fn default_export_replaces_the_complete_view_and_returns_only_a_small_rece
 async fn json_writes_its_own_file_and_inline_remains_an_explicit_read() {
     let root = tempfile::tempdir().unwrap();
     let service = RoadmapService::new(RoadmapEngine::new("export-test".into()))
-        .with_workspace_root(root.path());
+        .with_workspace_root(root.path())
+        .unwrap();
     let expected = service.engine().lock().unwrap().export("json");
     let response = call_export(service.clone(), json!({"format":"json"})).await;
     let receipt = response.structured_content.unwrap();
@@ -164,7 +167,8 @@ async fn json_writes_its_own_file_and_inline_remains_an_explicit_read() {
 async fn invalid_modes_and_formats_do_not_touch_the_existing_export() {
     let root = tempfile::tempdir().unwrap();
     let service = RoadmapService::new(RoadmapEngine::new("export-test".into()))
-        .with_workspace_root(root.path());
+        .with_workspace_root(root.path())
+        .unwrap();
     let destination = root.path().join("ROADMAP.md");
     std::fs::write(&destination, "keep me").unwrap();
     for args in [
@@ -193,7 +197,8 @@ async fn write_failures_are_explicit_and_leave_no_temporary_files() {
     std::fs::create_dir(&destination).unwrap();
     std::fs::write(destination.join("untouched"), "keep me").unwrap();
     let service = RoadmapService::new(RoadmapEngine::new("export-test".into()))
-        .with_workspace_root(root.path());
+        .with_workspace_root(root.path())
+        .unwrap();
     let response = call_export(service.clone(), json!({})).await;
     assert_eq!(response.is_error, Some(false));
     let receipt = response.structured_content.unwrap();
@@ -221,7 +226,8 @@ async fn symlink_and_dangling_symlink_destinations_are_never_followed_or_replace
         let destination = root.path().join("ROADMAP.md");
         std::os::unix::fs::symlink(&target, &destination).unwrap();
         let service = RoadmapService::new(RoadmapEngine::new("export-test".into()))
-            .with_workspace_root(root.path());
+            .with_workspace_root(root.path())
+            .unwrap();
         let response = call_export(service, json!({})).await;
         assert_eq!(
             response.structured_content.unwrap()["error_kind"],
@@ -238,6 +244,35 @@ async fn symlink_and_dangling_symlink_destinations_are_never_followed_or_replace
         }
         assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 1);
     }
+}
+
+#[test]
+fn an_empty_workspace_path_is_rejected_during_configuration() {
+    let error = RoadmapService::new(RoadmapEngine::new("export-test".into()))
+        .with_workspace_root("")
+        .err()
+        .expect("an invalid root must fail before the service is used");
+    assert_eq!(error.kind(), std::io::ErrorKind::InvalidInput);
+}
+
+#[tokio::test]
+async fn a_relative_workspace_path_is_bound_to_an_absolute_export_destination() {
+    let cwd = std::env::current_dir().unwrap();
+    let root = tempfile::tempdir_in(&cwd).unwrap();
+    let relative_root = root.path().strip_prefix(&cwd).unwrap();
+    assert!(relative_root.is_relative());
+    let service = RoadmapService::new(RoadmapEngine::new("export-test".into()))
+        .with_workspace_root(relative_root)
+        .unwrap();
+    let receipt = call_export(service, json!({}))
+        .await
+        .structured_content
+        .unwrap();
+    let destination = root.path().join("ROADMAP.md");
+    assert!(destination.is_absolute());
+    assert_eq!(receipt["written"], true);
+    assert_eq!(receipt["path"], destination.to_str().unwrap());
+    assert!(destination.is_file());
 }
 
 #[test]

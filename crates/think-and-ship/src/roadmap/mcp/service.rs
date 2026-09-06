@@ -74,10 +74,12 @@ impl RoadmapService {
     /// Configure the fixed workspace for file exports. Resolve it at server
     /// startup with [`resolve_workspace_root`]; unconfigured services support
     /// inline export only. Relative roots are captured against startup cwd.
-    #[must_use]
-    pub fn with_workspace_root(mut self, root: impl Into<PathBuf>) -> Self {
-        self.workspace_root = std::path::absolute(root.into()).ok();
-        self
+    ///
+    /// Returns an error if the path cannot be made absolute, including an
+    /// empty path or a failure to resolve the current directory.
+    pub fn with_workspace_root(mut self, root: impl Into<PathBuf>) -> std::io::Result<Self> {
+        self.workspace_root = Some(std::path::absolute(root.into())?);
+        Ok(self)
     }
 
     /// Wire the signal engine so `roadmap_status` includes a pending-signal

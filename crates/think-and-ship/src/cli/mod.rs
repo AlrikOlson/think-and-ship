@@ -479,7 +479,7 @@ fn build_unified() -> Result<(UnifiedService, String)> {
         &std::env::current_dir().context("resolving roadmap export workspace")?,
     )?;
     let roadmap_service =
-        crate::roadmap::RoadmapService::new(roadmap_engine).with_workspace_root(workspace_root);
+        crate::roadmap::RoadmapService::new(roadmap_engine).with_workspace_root(workspace_root)?;
 
     // Signal family: native, persisted local signal cache under the
     // Domain::Signal partition. When SyncTarget::Cloud is selected,
