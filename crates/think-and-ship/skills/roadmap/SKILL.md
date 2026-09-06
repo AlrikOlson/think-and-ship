@@ -62,7 +62,7 @@ Chunk lifecycle (`status`): `backlog → pending → in_progress → blocked →
 
 **Persistence:** native state survives across sessions only when `THINK_AND_SHIP_PERSIST=true` (the server's default is off). If a `roadmap_status` returns an empty roadmap on a project you know has chunks, suspect persistence is disabled or the data dir differs.
 
-**`ROADMAP.md` is a generated view.** Regenerate it any time with `think-and-ship roadmap export --format markdown > ROADMAP.md` (run with `THINK_AND_SHIP_PERSIST=true` so the CLI reads the same on-disk state). Never hand-edit it as the source of truth; if a project still has a hand-written `ROADMAP.md` and an empty native roadmap, seed it once with `think-and-ship roadmap import --file ROADMAP.md` (see "No native roadmap yet").
+**`ROADMAP.md` is a generated view.** Regenerate it with `roadmap_export {}`. The tool writes `ROADMAP.md` itself and returns a compact receipt; never copy its contents through the conversation. The CLI still supports `THINK_AND_SHIP_PERSIST=true think-and-ship roadmap export --format markdown > ROADMAP.md` for shell pipelines. Never hand-edit it as the source of truth; if a project still has a hand-written `ROADMAP.md` and an empty native roadmap, seed it once with `think-and-ship roadmap import --file ROADMAP.md` (see "No native roadmap yet").
 
 ## The loop
 
@@ -118,7 +118,7 @@ shopping list; loading a tool is a separate, deliberate act):
   - `roadmap_reprioritize` — record a re-prioritization *proposal* (does NOT reorder — human decision).
   - `roadmap_link` — attach a `think:`/`task:`/`action:`/`check:`/`chunk:` cross-ref to a chunk.
   - `roadmap_record_refresh` — record refresh provenance (summary + the think steps behind it).
-  - `roadmap_export` — markdown/json projection (the ROADMAP.md-shaped view).
+  - `roadmap_export` — writes ROADMAP.md (or ROADMAP.json) and returns a compact receipt; use `output: "inline"` only when the complete document is needed in memory.
 
 - **`think_*`** (reasoning — the "thinking" track):
   - `think_record_step` — open / close / mid-flight reasoning steps (mandatory open + close).
@@ -285,11 +285,7 @@ Mutate **native state**, not markdown:
 - **Re-prioritization** → `roadmap_reprioritize(id, suggested_priority, reason)` — a *proposal* only. Surface it; the server never reorders on its own.
 - **Split a too-big chunk** → `roadmap_add_chunk` the sub-chunks with `deps` wiring, `roadmap_obsolete_chunk` or `roadmap_update_chunk` the parent.
 
-Then regenerate the human-readable view if the project keeps a `ROADMAP.md`:
-```
-THINK_AND_SHIP_PERSIST=true think-and-ship roadmap export --format markdown > ROADMAP.md
-```
-(Or call `roadmap_export` and write the result.) Treat `ROADMAP.md` as a build output — never the place you record changes.
+Then call `roadmap_export {}` if the project keeps a `ROADMAP.md`. Check that the receipt reports `written: true`; the server writes the complete view itself. Do not hand-edit the file or copy an inline export into it. Treat `ROADMAP.md` as a build output — never the place you record changes.
 
 ### 12. Report
 

@@ -170,9 +170,23 @@ pub struct RoadmapStatusOutput {
 }
 
 #[derive(Serialize, JsonSchema)]
-pub struct RoadmapExportOutput {
-    pub format: String,
-    pub roadmap: String,
+#[serde(untagged)]
+pub enum RoadmapExportOutput {
+    File {
+        format: String,
+        path: String,
+        bytes: usize,
+        written: bool,
+    },
+    Inline {
+        format: String,
+        roadmap: String,
+    },
+    Error {
+        ok: bool,
+        error_kind: String,
+        message: String,
+    },
 }
 
 // WHY `records` IS A BARE `Value` AND NOT A `Vec<ChunkOutput>`.
@@ -329,7 +343,12 @@ pub fn output_schema_for(tool_name: &str) -> Option<Arc<JsonObject>> {
         _ => return None,
     };
     match value {
-        Value::Object(map) => Some(Arc::new(map)),
+        Value::Object(mut map) => {
+            if tool_name == "roadmap_export" {
+                map.insert("type".into(), Value::String("object".into()));
+            }
+            Some(Arc::new(map))
+        }
         _ => None,
     }
 }

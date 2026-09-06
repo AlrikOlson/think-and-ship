@@ -30,8 +30,10 @@ drifts gets `roadmap_update_chunk` / `roadmap_obsolete_chunk`;
 re-prioritization is a **proposal** (`roadmap_reprioritize`) that a human
 accepts, never an automatic reorder.
 
-`ROADMAP.md` is a **generated view**, not the source of truth — regenerate
-it any time:
+`roadmap_export {}` regenerates `ROADMAP.md` directly from native state.
+The tool returns the destination and byte count, so the document never needs
+to pass through the conversation. The CLI keeps its stdout contract for shell
+pipelines:
 
 ```sh
 # seed native state once from an existing hand-written ROADMAP.md

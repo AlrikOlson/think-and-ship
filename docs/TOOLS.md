@@ -64,8 +64,11 @@ families fuse into one graph.
 roadmap_add_chunk → roadmap_start_chunk → (ship objective) → roadmap_complete_chunk
 ```
 
-`roadmap_export` regenerates a `ROADMAP.md`-shaped markdown view — the
-roadmap is native state, the markdown is a generated artifact.
+`roadmap_export` atomically writes `ROADMAP.md` in the configured workspace and
+returns `{format, path, bytes, written}`. Pass `format: "json"` to write
+`ROADMAP.json`, or `output: "inline"` to receive `{format, roadmap}` without
+writing a file. Use `roadmap_get` to read selected records.
+The roadmap is native state; the exported files are generated artifacts.
 [Roadmap-driven development](WORKFLOWS.md#roadmap-driven-development) walks
 the loop.
 
@@ -82,7 +85,7 @@ the loop.
 | `roadmap_reprioritize`   | Record a re-prioritization *proposal* (never reorders)          |
 | `roadmap_link`           | Attach a `think:`/`task:`/`action:`/`check:`/`chunk:` cross-ref |
 | `roadmap_record_refresh` | Record refresh provenance (summary + the think steps behind it) |
-| `roadmap_export`         | Markdown / JSON projection — the `ROADMAP.md`-shaped view        |
+| `roadmap_export`         | Write `ROADMAP.md` / `ROADMAP.json`; return a compact receipt        |
 | `roadmap_get`            | Full records for a named handful of chunks, with sparse fields   |
 | `roadmap_set_group`      | Put a chunk in a workstream, or take it out of one               |
 | `roadmap_propose_groups` | Which ungrouped chunks belong together, for *you* to name        |

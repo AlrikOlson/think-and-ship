@@ -2,7 +2,10 @@
 //! mirroring `ShipService`. Unlike think/ship there are NO deprecated aliases:
 //! `roadmap_*` is a brand-new family with no legacy names to carry.
 
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+
+pub use super::export::resolve_workspace_root;
 
 use rmcp::{
     ErrorData, RoleServer, ServerHandler,
@@ -32,7 +35,7 @@ When to call which tool:
   - Attach a think:/task: cross-reference  → roadmap_link
   - Record a research refresh + its steps  → roadmap_record_refresh
   - Reconstruct the plan / get state       → roadmap_status
-  - Produce a ROADMAP.md-shaped view       → roadmap_export
+  - Write ROADMAP.md and get a receipt     → roadmap_export
   - See if/where the plan is mirrored      → tracker_status
   - Mirror this roadmap into a tracker     → tracker_setup
 
@@ -49,6 +52,7 @@ structuredContent."#;
 #[derive(Clone)]
 pub struct RoadmapService {
     pub(super) engine: Arc<Mutex<RoadmapEngine>>,
+    pub(super) workspace_root: Option<PathBuf>,
     /// Optional wire-layer handle to the signal engine so
     /// `roadmap_status` can fold in a pending-signal count. `None` in unit/test
     /// contexts that don't wire signals — the count is simply omitted then. The
@@ -61,9 +65,21 @@ impl RoadmapService {
     pub fn new(engine: RoadmapEngine) -> Self {
         Self {
             engine: Arc::new(Mutex::new(engine)),
+            workspace_root: None,
             signal: None,
             tool_router: Self::make_tool_router(),
         }
+    }
+
+    /// Configure the fixed workspace for file exports. Resolve it at server
+    /// startup with [`resolve_workspace_root`]; unconfigured services support
+    /// inline export only. Relative roots are captured against startup cwd.
+    ///
+    /// Returns an error if the path cannot be made absolute, including an
+    /// empty path or a failure to resolve the current directory.
+    pub fn with_workspace_root(mut self, root: impl Into<PathBuf>) -> std::io::Result<Self> {
+        self.workspace_root = Some(std::path::absolute(root.into())?);
+        Ok(self)
     }
 
     /// Wire the signal engine so `roadmap_status` includes a pending-signal
