@@ -6,6 +6,12 @@ SemVer.
 
 ## [Unreleased]
 
+## [0.6.0](https://github.com/AlrikOlson/think-and-ship/compare/v0.5.2...v0.6.0) - 2026-09-06
+
+### Fixed
+
+- *(roadmap)* [**breaking**] write exports directly and expose the shared ship engine
+
 ## [0.5.2](https://github.com/AlrikOlson/think-and-ship/compare/v0.5.1...v0.5.2) - 2026-08-30
 
 ### Fixed
