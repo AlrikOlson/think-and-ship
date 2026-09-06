@@ -11,6 +11,17 @@ SemVer.
 ### Fixed
 
 - *(roadmap)* [**breaking**] write exports directly and expose the shared ship engine
+- Invalid workspace paths now return their configuration error immediately.
+
+### Added
+
+- `ShipService::engine()` exposes the shared engine handle so embedding hosts can record checks on the same execution trace.
+
+### Migration
+
+- `roadmap_export` now atomically writes `ROADMAP.md` (or `ROADMAP.json`) in the configured workspace and returns `{format, path, bytes, written}`. Pass `output: "inline"` to retain the previous `{format, roadmap}` response without writing a file. The CLI `roadmap export` command still writes to stdout.
+- Embedding hosts configure file exports with `RoadmapService::new(engine).with_workspace_root(root)?`. The builder returns `std::io::Result<Self>`; services without a workspace support inline export only.
+- Rust consumers must update `ExportArgs` construction for the new `output` and `extra` fields and handle the `File`, `Inline`, and `Error` variants of `RoadmapExportOutput`.
 
 ## [0.5.2](https://github.com/AlrikOlson/think-and-ship/compare/v0.5.1...v0.5.2) - 2026-08-30
 
